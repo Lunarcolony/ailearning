@@ -1,0 +1,5 @@
+sample_mri_000.jpg,93.8
+sample_mri_001.jpg,82.3
+sample_mri_002.jpg,117.5
+sample_mri_003.jpg,101.0
+sample_mri_004.jpg,96.3
