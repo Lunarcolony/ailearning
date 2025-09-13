@@ -1,9 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from './Home';
-import Workspace from './Workspace';
-import Tutorials from './Tutorials';
-import Settings from './Settings';
+import Home from './pages/Home';
+import Workspace from './pages/Workspace';
+import Tutorials from './pages/Tutorials';
+import Settings from './pages/Settings';
 
 const App: React.FC = () => {
   return (
