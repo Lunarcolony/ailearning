@@ -4,7 +4,6 @@ import {
   Code, 
   Download, 
   Palette, 
-  Grid, 
   Save,
   Moon,
   Sun,
