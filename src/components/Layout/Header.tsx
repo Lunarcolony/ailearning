@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Brain, Home, Settings, BookOpen, Palette } from 'lucide-react';
+import { Brain, Home, Settings, BookOpen, Palette, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../../hooks/useTheme';
 
 const Header: React.FC = () => {
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
 
   const navigationItems = [
     { path: '/', label: 'Home', icon: Home },
@@ -56,21 +58,19 @@ const Header: React.FC = () => {
             ))}
           </nav>
 
-          {/* Theme Toggle Placeholder */}
+          {/* Theme Toggle */}
           <div className="flex items-center space-x-2">
             <button
               type="button"
+              onClick={toggleTheme}
               className="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              title="Toggle theme (coming soon)"
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                />
-              </svg>
+              {theme === 'light' ? (
+                <Moon className="w-5 h-5" />
+              ) : (
+                <Sun className="w-5 h-5" />
+              )}
             </button>
           </div>
         </div>
