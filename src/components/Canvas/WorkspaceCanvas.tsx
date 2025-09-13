@@ -168,33 +168,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
             </button>
           </div>
         </div>
-
-        {/* Add Node Controls */}
-        <div className="glass-effect rounded-lg p-2 shadow-lg">
-          <div className="flex flex-col gap-1">
-            <button
-              onClick={() => addNode('input')}
-              className="px-3 py-2 text-xs font-medium text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
-              title="Add Input Node"
-            >
-              Input
-            </button>
-            <button
-              onClick={() => addNode('hidden')}
-              className="px-3 py-2 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-              title="Add Hidden Node"
-            >
-              Hidden
-            </button>
-            <button
-              onClick={() => addNode('output')}
-              className="px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-              title="Add Output Node"
-            >
-              Output
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Status Bar */}
