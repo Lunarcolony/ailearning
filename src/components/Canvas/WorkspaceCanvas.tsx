@@ -255,31 +255,46 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     } else {
       // Start panning
       setIsPanning(true);
-      setLastPanPoint({ x: e.clientX, y: e.clientY });
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const initialPanOffset = { ...panOffset };
+      
       e.preventDefault(); // Prevent default to avoid text selection
+      
       // Clear selection when clicking on canvas
       setSelectedNodeIds(new Set());
       if (onNodeSelect) {
         onNodeSelect('');
       }
+
+      // Add global mouse event listeners for panning
+      const handleGlobalMouseMove = (event: MouseEvent) => {
+        const deltaX = event.clientX - startX;
+        const deltaY = event.clientY - startY;
+        
+        setPanOffset({
+          x: initialPanOffset.x + deltaX,
+          y: initialPanOffset.y + deltaY
+        });
+      };
+
+      const handleGlobalMouseUp = () => {
+        setIsPanning(false);
+        document.removeEventListener('mousemove', handleGlobalMouseMove);
+        document.removeEventListener('mouseup', handleGlobalMouseUp);
+      };
+
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
     }
-  }, [handleSelectionBoxStart, onNodeSelect]);
+  }, [handleSelectionBoxStart, onNodeSelect, panOffset]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (selectionBox?.isActive) {
       handleSelectionBoxUpdate(e);
-    } else if (isPanning) {
-      const deltaX = e.clientX - lastPanPoint.x;
-      const deltaY = e.clientY - lastPanPoint.y;
-      
-      setPanOffset(prev => ({
-        x: prev.x + deltaX,
-        y: prev.y + deltaY
-      }));
-      
-      setLastPanPoint({ x: e.clientX, y: e.clientY });
     }
-  }, [isPanning, lastPanPoint, selectionBox, handleSelectionBoxUpdate]);
+    // Panning is now handled by global event listeners
+  }, [selectionBox, handleSelectionBoxUpdate]);
 
   const handleMouseUp = useCallback(() => {
     if (selectionBox?.isActive) {

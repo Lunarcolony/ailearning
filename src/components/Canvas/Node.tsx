@@ -140,6 +140,12 @@ const Node: React.FC<NodeProps> = ({
 
   // Handle drag-to-connect functionality
   const handleDragStart = (event: React.DragEvent) => {
+    // Only enable drag-to-connect when not doing node positioning drag
+    if (isDragging) {
+      event.preventDefault();
+      return;
+    }
+    
     // Set drag data for node-to-node connections
     event.dataTransfer.setData('application/json', JSON.stringify({ 
       type: 'node-connection',
@@ -149,9 +155,13 @@ const Node: React.FC<NodeProps> = ({
   };
 
   const handleDragOver = (event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'link';
-    setIsDraggedOver(true);
+    // Check if this is a node connection drag
+    const types = Array.from(event.dataTransfer.types);
+    if (types.includes('application/json')) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'link';
+      setIsDraggedOver(true);
+    }
   };
 
   const handleDragLeave = () => {
@@ -166,15 +176,15 @@ const Node: React.FC<NodeProps> = ({
       const dragData = JSON.parse(event.dataTransfer.getData('application/json'));
       if (dragData.type === 'node-connection' && dragData.sourceNodeId !== node.id) {
         // Trigger connection between source and target nodes
-        if (onConnectionEnd) {
-          // First set up the connection source
-          onConnectionStart?.(dragData.sourceNodeId, event as any);
-          // Then complete the connection to this node
+        // Use the existing connection system through the WorkspaceCanvas
+        if (onConnectionStart && onConnectionEnd) {
+          // Simulate the connection process
+          onConnectionStart(dragData.sourceNodeId, event as any);
           onConnectionEnd(node.id);
         }
       }
     } catch (error) {
-      console.error('Failed to parse drag data:', error);
+      // Ignore errors for non-connection drags (like palette drags)
     }
   };
 
@@ -193,8 +203,6 @@ const Node: React.FC<NodeProps> = ({
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onContextMenu={handleContextMenu}
-      draggable={!isDragging} // Allow dragging for connections when not moving the node
-      onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -230,13 +238,21 @@ const Node: React.FC<NodeProps> = ({
       {node.type !== 'input' && (
         <div 
           className={`absolute -left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white dark:bg-gray-800 border-2 border-blue-400 rounded-full transition-all duration-200 cursor-crosshair ${
-            isHovering ? 'opacity-100 scale-110' : 'opacity-0'
+            isHovering || connectionInProgress ? 'opacity-100 scale-110' : 'opacity-70'
           }`}
           onMouseDown={(e) => {
             e.stopPropagation();
             handleConnectionEnd(e);
           }}
-          title="Connect input"
+          onDrop={(e) => {
+            e.stopPropagation();
+            handleDrop(e as any);
+          }}
+          onDragOver={(e) => {
+            e.stopPropagation();
+            handleDragOver(e as any);
+          }}
+          title="Drop connection here or click to connect"
         />
       )}
       
@@ -244,13 +260,18 @@ const Node: React.FC<NodeProps> = ({
       {node.type !== 'output' && (
         <div 
           className={`absolute -right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white dark:bg-gray-800 border-2 border-green-400 rounded-full transition-all duration-200 cursor-crosshair ${
-            isHovering ? 'opacity-100 scale-110' : 'opacity-0'
+            isHovering || connectionInProgress ? 'opacity-100 scale-110' : 'opacity-70'
           }`}
+          draggable
+          onDragStart={(e) => {
+            e.stopPropagation();
+            handleDragStart(e as any);
+          }}
           onMouseDown={(e) => {
             e.stopPropagation();
             handleConnectionStart(e, 'right');
           }}
-          title="Connect output"
+          title="Drag to connect or click to start connection"
         />
       )}
     </div>
