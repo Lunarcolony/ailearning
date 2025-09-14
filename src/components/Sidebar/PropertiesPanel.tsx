@@ -1,19 +1,26 @@
-import React from 'react';
-import { Settings, Info, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Settings, Info, Trash2, Code } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { NodeData } from '../Canvas/Node';
 
 interface PropertiesPanelProps {
   selectedNode: NodeData | null;
+  nodes?: NodeData[];
+  connections?: any[];
   onNodeUpdate?: (nodeId: string, updates: Partial<NodeData>) => void;
   onNodeDelete?: (nodeId: string) => void;
 }
 
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ 
   selectedNode, 
+  nodes = [],
+  connections = [],
   onNodeUpdate, 
   onNodeDelete 
 }) => {
+  const [showCodeGeneration, setShowCodeGeneration] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState<string>('');
+  const [codeFramework, setCodeFramework] = useState<'tensorflow' | 'pytorch' | 'numpy'>('tensorflow');
   const activationOptions = ['ReLU', 'Sigmoid', 'Tanh', 'Softmax', 'Leaky ReLU', 'ELU', 'GELU'];
 
   const handleLabelChange = (value: string) => {
@@ -32,6 +39,106 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     if (selectedNode && onNodeDelete) {
       onNodeDelete(selectedNode.id);
     }
+  };
+
+  const generateNetworkCode = () => {
+    if (nodes.length === 0) return;
+    
+    let code = '';
+    
+    if (codeFramework === 'tensorflow') {
+      code = `# Generated Neural Network using TensorFlow
+# This code was auto-generated from the visual neural network builder
+
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+
+def create_model():
+    model = keras.Sequential()
+    
+`;
+      
+      // Add layers based on nodes
+      const sortedNodes = nodes.filter(n => n.type !== 'activation').sort((a, b) => {
+        if (a.type === 'input') return -1;
+        if (b.type === 'input') return 1;
+        if (a.type === 'output') return 1;
+        if (b.type === 'output') return -1;
+        return 0;
+      });
+      
+      sortedNodes.forEach((node, index) => {
+        if (node.type === 'input') {
+          code += `    # Input layer\n`;
+          code += `    model.add(layers.Dense(64, input_shape=(784,), name='${node.label.replace(/\s+/g, '_').toLowerCase()}'))\n`;
+        } else if (node.type === 'hidden') {
+          code += `    # Hidden layer: ${node.label}\n`;
+          code += `    model.add(layers.Dense(64, activation='${(node.activation || 'relu').toLowerCase()}', name='${node.label.replace(/\s+/g, '_').toLowerCase()}'))\n`;
+        } else if (node.type === 'output') {
+          code += `    # Output layer\n`;
+          code += `    model.add(layers.Dense(1, activation='${(node.activation || 'sigmoid').toLowerCase()}', name='${node.label.replace(/\s+/g, '_').toLowerCase()}'))\n`;
+        }
+      });
+      
+      code += `
+    return model
+
+# Create and compile the model
+model = create_model()
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Model summary
+model.summary()
+
+# Train the model (uncomment and provide your data)
+# model.fit(X_train, y_train, epochs=10, validation_data=(X_val, y_val))
+`;
+    } else if (codeFramework === 'pytorch') {
+      code = `# Generated Neural Network using PyTorch
+# This code was auto-generated from the visual neural network builder
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class NeuralNetwork(nn.Module):
+    def __init__(self):
+        super(NeuralNetwork, self).__init__()
+        
+`;
+      
+      const hiddenNodes = nodes.filter(n => n.type === 'hidden');
+      hiddenNodes.forEach((node, index) => {
+        code += `        self.${node.label.replace(/\s+/g, '_').toLowerCase()} = nn.Linear(64, 64)\n`;
+      });
+      
+      code += `        self.output = nn.Linear(64, 1)
+        
+    def forward(self, x):
+`;
+      
+      hiddenNodes.forEach((node, index) => {
+        const activation = node.activation?.toLowerCase() || 'relu';
+        code += `        x = F.${activation}(self.${node.label.replace(/\s+/g, '_').toLowerCase()}(x))\n`;
+      });
+      
+      code += `        x = torch.sigmoid(self.output(x))
+        return x
+
+# Create model instance
+model = NeuralNetwork()
+
+# Define loss function and optimizer
+criterion = nn.BCELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+print(model)
+`;
+    }
+    
+    setGeneratedCode(code);
+    setShowCodeGeneration(true);
   };
 
   if (!selectedNode) {
@@ -149,6 +256,51 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               {selectedNode.id}
             </span>
           </div>
+        </div>
+
+        {/* Code Generation Section */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Code Generation
+            </h4>
+            <select
+              value={codeFramework}
+              onChange={(e) => setCodeFramework(e.target.value as any)}
+              className="text-xs px-2 py-1 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            >
+              <option value="tensorflow">TensorFlow</option>
+              <option value="pytorch">PyTorch</option>
+              <option value="numpy">NumPy</option>
+            </select>
+          </div>
+          
+          <motion.button
+            onClick={generateNetworkCode}
+            className="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Code className="w-4 h-4 mr-2" />
+            Generate Network Code
+          </motion.button>
+
+          {showCodeGeneration && generatedCode && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Generated Code</span>
+                <button
+                  onClick={() => navigator.clipboard.writeText(generatedCode)}
+                  className="text-xs text-blue-500 hover:text-blue-600"
+                >
+                  Copy
+                </button>
+              </div>
+              <pre className="text-xs bg-gray-900 text-green-400 p-3 rounded-lg overflow-auto max-h-64 font-mono">
+                {generatedCode}
+              </pre>
+            </div>
+          )}
         </div>
       </div>
     </div>

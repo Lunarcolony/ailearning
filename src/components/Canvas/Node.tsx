@@ -18,6 +18,7 @@ interface NodeProps {
   onDrag?: (nodeId: string, x: number, y: number) => void;
   onConnectionStart?: (nodeId: string, event: React.MouseEvent) => void;
   onConnectionEnd?: (nodeId: string) => void;
+  onContextMenu?: (nodeId: string, position: { x: number; y: number }) => void;
   connectionInProgress?: boolean;
   scale?: number;
 }
@@ -28,10 +29,20 @@ const Node: React.FC<NodeProps> = ({
   onDrag, 
   onConnectionStart,
   onConnectionEnd,
+  onContextMenu,
   connectionInProgress = false,
   scale = 1 
 }) => {
   const [isHovering, setIsHovering] = useState(false);
+
+  const handleContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault(); // Prevent browser context menu
+    event.stopPropagation();
+    
+    if (onContextMenu) {
+      onContextMenu(node.id, { x: event.clientX, y: event.clientY });
+    }
+  };
   const getNodeIcon = () => {
     switch (node.type) {
       case 'input':
@@ -104,6 +115,7 @@ const Node: React.FC<NodeProps> = ({
       }}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
+      onContextMenu={handleContextMenu}
       whileHover={{ scale: 1.05 }}
       whileDrag={{ scale: 1.1, zIndex: 30 }}
     >

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Plus, Minus, RotateCcw, Move } from 'lucide-react';
 import Node, { NodeData } from './Node';
 import SimpleConnectionManager from './SimpleConnectionManager';
+import ContextMenu from './ContextMenu';
 import { useConnections } from '../../hooks/useConnections';
 
 interface WorkspaceCanvasProps {
@@ -31,6 +32,11 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     sourceNodeId: string;
     isActive: boolean;
   } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    position: { x: number; y: number };
+    nodeId: string | null;
+  }>({ isOpen: false, position: { x: 0, y: 0 }, nodeId: null });
   
   const canvasRef = useRef<HTMLDivElement>(null);
   
@@ -42,6 +48,21 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     getNodeConnections,
     removeNodeConnections
   } = useConnections();
+
+  // Add some default connections for demonstration
+  React.useEffect(() => {
+    // Add some sample connections if none exist
+    if (connections.length === 0 && nodes.length >= 4) {
+      // Connect the original 4 nodes in sequence
+      const timer = setTimeout(() => {
+        addConnection({ sourceNodeId: '1', targetNodeId: '2' }); // Data Input -> Hidden 1
+        addConnection({ sourceNodeId: '2', targetNodeId: '3' }); // Hidden 1 -> Hidden 2  
+        addConnection({ sourceNodeId: '3', targetNodeId: '4' }); // Hidden 2 -> Output
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [nodes, connections, addConnection]);
 
   // Connection handlers
   const handleConnectionAdd = useCallback((sourceNodeId: string, targetNodeId: string) => {
@@ -78,6 +99,43 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     }
     setConnectionInProgress(null);
   }, [connectionInProgress]);
+
+  // Context menu handlers
+  const handleNodeContextMenu = useCallback((nodeId: string, position: { x: number; y: number }) => {
+    setContextMenu({ isOpen: true, position, nodeId });
+  }, []);
+
+  const handleContextMenuClose = useCallback(() => {
+    setContextMenu({ isOpen: false, position: { x: 0, y: 0 }, nodeId: null });
+  }, []);
+
+  const handleContextMenuConnect = useCallback((targetNodeId: string) => {
+    if (contextMenu.nodeId) {
+      handleConnectionAdd(contextMenu.nodeId, targetNodeId);
+    }
+  }, [contextMenu.nodeId, handleConnectionAdd]);
+
+  const handleContextMenuDuplicate = useCallback(() => {
+    if (contextMenu.nodeId && onNodeAdd) {
+      const sourceNode = nodes.find(n => n.id === contextMenu.nodeId);
+      if (sourceNode) {
+        onNodeAdd(sourceNode.type);
+      }
+    }
+  }, [contextMenu.nodeId, nodes, onNodeAdd]);
+
+  const handleContextMenuDelete = useCallback(() => {
+    if (contextMenu.nodeId && onNodeSelect) {
+      // Remove connections first
+      removeNodeConnections(contextMenu.nodeId);
+      // Update selected node if needed
+      if (selectedNodeId === contextMenu.nodeId) {
+        onNodeSelect(''); // Clear selection
+      }
+      // The actual node removal should be handled by parent component
+      // For now, we'll just clear selection
+    }
+  }, [contextMenu.nodeId, selectedNodeId, onNodeSelect, removeNodeConnections]);
 
   // Handle drop on canvas for drag-and-drop from palette
   const handleCanvasDrop = useCallback((event: React.DragEvent) => {
@@ -221,11 +279,24 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               onDrag={handleNodeDrag}
               onConnectionStart={handleConnectionStart}
               onConnectionEnd={handleConnectionEnd}
+              onContextMenu={handleNodeContextMenu}
               scale={scale}
             />
           ))}
         </div>
       </div>
+
+      {/* Context Menu */}
+      <ContextMenu
+        isOpen={contextMenu.isOpen}
+        position={contextMenu.position}
+        node={contextMenu.nodeId ? nodes.find(n => n.id === contextMenu.nodeId) || null : null}
+        availableNodes={nodes}
+        onClose={handleContextMenuClose}
+        onConnectTo={handleContextMenuConnect}
+        onDelete={handleContextMenuDelete}
+        onDuplicate={handleContextMenuDuplicate}
+      />
 
       {/* Controls */}
       <div className="absolute top-4 right-4 flex flex-col gap-2">
