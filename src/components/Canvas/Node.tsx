@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useRef, useCallback } from 'react';
 import { Circle, Square, Triangle, Zap } from 'lucide-react';
 
 export interface NodeData {
@@ -34,6 +33,8 @@ const Node: React.FC<NodeProps> = ({
   scale = 1 
 }) => {
   const [isHovering, setIsHovering] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef<{ startX: number; startY: number; nodeStartX: number; nodeStartY: number } | null>(null);
 
   const handleContextMenu = (event: React.MouseEvent) => {
     event.preventDefault(); // Prevent browser context menu
@@ -43,6 +44,51 @@ const Node: React.FC<NodeProps> = ({
       onContextMenu(node.id, { x: event.clientX, y: event.clientY });
     }
   };
+
+  const handleMouseDown = useCallback((event: React.MouseEvent) => {
+    if (event.button !== 0) return; // Only handle left mouse button
+    
+    event.preventDefault();
+    event.stopPropagation();
+    
+    setIsDragging(true);
+    dragRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      nodeStartX: node.x,
+      nodeStartY: node.y
+    };
+
+    // Select the node when starting to drag
+    if (onSelect) {
+      onSelect(node.id);
+    }
+
+    // Add global mouse event listeners
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      
+      const deltaX = (e.clientX - dragRef.current.startX) / scale;
+      const deltaY = (e.clientY - dragRef.current.startY) / scale;
+      
+      const newX = dragRef.current.nodeStartX + deltaX;
+      const newY = dragRef.current.nodeStartY + deltaY;
+      
+      if (onDrag) {
+        onDrag(node.id, newX, newY);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      dragRef.current = null;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [node.id, node.x, node.y, scale, onSelect, onDrag]);
   const getNodeIcon = () => {
     switch (node.type) {
       case 'input':
@@ -90,42 +136,31 @@ const Node: React.FC<NodeProps> = ({
   };
 
   return (
-    <motion.div
-      className={`absolute cursor-grab active:cursor-grabbing ${
+    <div
+      className={`absolute select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} ${
         node.selected ? 'z-20' : 'z-10'
       }`}
       style={{
-        left: node.x * scale,
-        top: node.y * scale,
-        transform: `scale(${scale})`,
-        transformOrigin: 'top left',
+        left: node.x,
+        top: node.y,
+        transform: isDragging ? 'scale(1.05)' : 'scale(1)',
+        transition: isDragging ? 'none' : 'transform 0.15s ease-out',
       }}
-      initial={{ scale: 0 }}
-      animate={{ scale: 1 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      drag
-      onDragEnd={(_, info) => {
-        if (onDrag) {
-          onDrag(
-            node.id,
-            node.x + info.offset.x / scale,
-            node.y + info.offset.y / scale
-          );
-        }
-      }}
+      onMouseDown={handleMouseDown}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onContextMenu={handleContextMenu}
-      whileHover={{ scale: 1.05 }}
-      whileDrag={{ scale: 1.1, zIndex: 30 }}
     >
       <div
         className={`neural-node w-16 h-16 flex items-center justify-center ${getNodeColor()} ${
           node.selected 
-            ? 'ring-4 ring-primary-400 ring-opacity-60 shadow-xl' 
+            ? 'ring-4 ring-blue-400 ring-opacity-60 shadow-xl' 
             : 'shadow-md hover:shadow-lg'
-        }`}
-        onClick={() => onSelect?.(node.id)}
+        } ${isDragging ? 'shadow-2xl' : ''}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect?.(node.id);
+        }}
       >
         <Icon className="w-6 h-6 text-white" />
       </div>
@@ -149,7 +184,10 @@ const Node: React.FC<NodeProps> = ({
           className={`absolute -left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white dark:bg-gray-800 border-2 border-blue-400 rounded-full transition-all duration-200 cursor-crosshair ${
             isHovering ? 'opacity-100 scale-110' : 'opacity-0'
           }`}
-          onMouseDown={(e) => handleConnectionEnd(e)}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            handleConnectionEnd(e);
+          }}
           title="Connect input"
         />
       )}
@@ -160,11 +198,14 @@ const Node: React.FC<NodeProps> = ({
           className={`absolute -right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white dark:bg-gray-800 border-2 border-green-400 rounded-full transition-all duration-200 cursor-crosshair ${
             isHovering ? 'opacity-100 scale-110' : 'opacity-0'
           }`}
-          onMouseDown={(e) => handleConnectionStart(e, 'right')}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            handleConnectionStart(e, 'right');
+          }}
           title="Connect output"
         />
       )}
-    </motion.div>
+    </div>
   );
 };
 

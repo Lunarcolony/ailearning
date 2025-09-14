@@ -1,5 +1,4 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import { Plus, Minus, RotateCcw, Move } from 'lucide-react';
 import Node, { NodeData } from './Node';
 import SimpleConnectionManager from './SimpleConnectionManager';
@@ -37,6 +36,14 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     position: { x: number; y: number };
     nodeId: string | null;
   }>({ isOpen: false, position: { x: 0, y: 0 }, nodeId: null });
+  const [selectionBox, setSelectionBox] = useState<{
+    isActive: boolean;
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  } | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
   
   const canvasRef = useRef<HTMLDivElement>(null);
   
@@ -144,27 +151,86 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     
     try {
       const nodeTypeData = JSON.parse(event.dataTransfer.getData('application/json'));
-      const rect = canvasRef.current.getBoundingClientRect();
-      
-      // Calculate drop position relative to canvas
-      const x = (event.clientX - rect.left - panOffset.x) / scale;
-      const y = (event.clientY - rect.top - panOffset.y) / scale;
-      
-      // Create new node at drop position
+      // Note: For now we'll add the node at the center since we need to modify onNodeAdd
+      // to accept position parameters for proper drop positioning
       onNodeAdd(nodeTypeData.type);
-      
-      // Note: We could enhance this to set exact position if we modify the onNodeAdd signature
     } catch (error) {
       console.error('Failed to parse dropped node data:', error);
     }
-  }, [onNodeAdd, scale, panOffset]);
+  }, [onNodeAdd]);
 
-  // Handle node selection
-  const handleNodeSelect = useCallback((nodeId: string) => {
-    if (onNodeSelect) {
-      onNodeSelect(nodeId);
+  // Handle node selection - support multi-select
+  const handleNodeSelect = useCallback((nodeId: string, multiSelect: boolean = false) => {
+    if (multiSelect) {
+      setSelectedNodeIds(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(nodeId)) {
+          newSet.delete(nodeId);
+        } else {
+          newSet.add(nodeId);
+        }
+        return newSet;
+      });
+    } else {
+      setSelectedNodeIds(new Set([nodeId]));
+      if (onNodeSelect) {
+        onNodeSelect(nodeId);
+      }
     }
   }, [onNodeSelect]);
+
+  // Handle selection box
+  const handleSelectionBoxStart = useCallback((event: React.MouseEvent) => {
+    if (!canvasRef.current) return;
+    
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = (event.clientX - rect.left - panOffset.x) / scale;
+    const y = (event.clientY - rect.top - panOffset.y) / scale;
+    
+    setSelectionBox({
+      isActive: true,
+      startX: x,
+      startY: y,
+      currentX: x,
+      currentY: y
+    });
+  }, [panOffset, scale]);
+
+  const handleSelectionBoxUpdate = useCallback((event: React.MouseEvent) => {
+    if (!selectionBox?.isActive || !canvasRef.current) return;
+    
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = (event.clientX - rect.left - panOffset.x) / scale;
+    const y = (event.clientY - rect.top - panOffset.y) / scale;
+    
+    setSelectionBox(prev => prev ? {
+      ...prev,
+      currentX: x,
+      currentY: y
+    } : null);
+  }, [selectionBox, panOffset, scale]);
+
+  const handleSelectionBoxEnd = useCallback(() => {
+    if (!selectionBox?.isActive) return;
+    
+    // Calculate selection bounds
+    const minX = Math.min(selectionBox.startX, selectionBox.currentX);
+    const maxX = Math.max(selectionBox.startX, selectionBox.currentX);
+    const minY = Math.min(selectionBox.startY, selectionBox.currentY);
+    const maxY = Math.max(selectionBox.startY, selectionBox.currentY);
+    
+    // Find nodes within selection bounds
+    const selectedIds = new Set<string>();
+    nodes.forEach(node => {
+      if (node.x >= minX && node.x + 64 <= maxX && 
+          node.y >= minY && node.y + 64 <= maxY) {
+        selectedIds.add(node.id);
+      }
+    });
+    
+    setSelectedNodeIds(selectedIds);
+    setSelectionBox(null);
+  }, [selectionBox, nodes]);
 
   // Handle node dragging
   const handleNodeDrag = useCallback((nodeId: string, x: number, y: number) => {
@@ -173,20 +239,29 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     }
   }, [onNodeDrag]);
 
-  // Handle canvas panning
+  // Handle canvas panning and selection
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
+    if (e.target !== e.currentTarget) return;
+    
+    if (e.shiftKey) {
+      // Start selection box
+      handleSelectionBoxStart(e);
+    } else {
+      // Start panning
       setIsPanning(true);
       setLastPanPoint({ x: e.clientX, y: e.clientY });
-      // Clear node selection when clicking on canvas
+      // Clear selection when clicking on canvas
+      setSelectedNodeIds(new Set());
       if (onNodeSelect) {
-        onNodeSelect(''); // Clear selection by passing empty string
+        onNodeSelect('');
       }
     }
-  }, [onNodeSelect]);
+  }, [handleSelectionBoxStart, onNodeSelect]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isPanning) {
+    if (selectionBox?.isActive) {
+      handleSelectionBoxUpdate(e);
+    } else if (isPanning) {
       const deltaX = e.clientX - lastPanPoint.x;
       const deltaY = e.clientY - lastPanPoint.y;
       
@@ -197,11 +272,14 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       
       setLastPanPoint({ x: e.clientX, y: e.clientY });
     }
-  }, [isPanning, lastPanPoint]);
+  }, [isPanning, lastPanPoint, selectionBox, handleSelectionBoxUpdate]);
 
   const handleMouseUp = useCallback(() => {
+    if (selectionBox?.isActive) {
+      handleSelectionBoxEnd();
+    }
     setIsPanning(false);
-  }, []);
+  }, [selectionBox, handleSelectionBoxEnd]);
 
   // Handle zoom
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -230,10 +308,32 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   const nodesWithSelection = useMemo(() => 
     nodes.map(node => ({ 
       ...node, 
-      selected: node.id === selectedNodeId 
+      selected: selectedNodeIds.has(node.id) || node.id === selectedNodeId 
     })), 
-    [nodes, selectedNodeId]
+    [nodes, selectedNodeIds, selectedNodeId]
   );
+
+  // Selection box rendering helper
+  const renderSelectionBox = () => {
+    if (!selectionBox?.isActive) return null;
+    
+    const minX = Math.min(selectionBox.startX, selectionBox.currentX);
+    const maxX = Math.max(selectionBox.startX, selectionBox.currentX);
+    const minY = Math.min(selectionBox.startY, selectionBox.currentY);
+    const maxY = Math.max(selectionBox.startY, selectionBox.currentY);
+    
+    return (
+      <div
+        className="absolute border-2 border-blue-400 bg-blue-100 bg-opacity-20 pointer-events-none"
+        style={{
+          left: minX,
+          top: minY,
+          width: maxX - minX,
+          height: maxY - minY,
+        }}
+      />
+    );
+  };
 
   return (
     <div className={`relative w-full h-full overflow-hidden bg-white dark:bg-gray-950 ${className}`}>
@@ -257,9 +357,13 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         <div
           className="relative w-full h-full canvas-container"
           style={{
-            transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+            transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${scale})`,
+            transformOrigin: '0 0',
           }}
         >
+          {/* Selection Box */}
+          {renderSelectionBox()}
+          
           {/* Connection Manager */}
           <SimpleConnectionManager
             nodes={nodes}
@@ -268,19 +372,19 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
             onConnectionAdd={handleConnectionAdd}
             onConnectionDelete={handleConnectionDelete}
             onConnectionSelect={handleConnectionSelect}
-            scale={scale}
+            scale={1} // Scale is handled by parent transform
           />
           
           {nodesWithSelection.map(node => (
             <Node
               key={node.id}
               node={node}
-              onSelect={handleNodeSelect}
+              onSelect={(nodeId) => handleNodeSelect(nodeId, false)}
               onDrag={handleNodeDrag}
               onConnectionStart={handleConnectionStart}
               onConnectionEnd={handleConnectionEnd}
               onContextMenu={handleNodeContextMenu}
-              scale={scale}
+              scale={1} // Scale is handled by parent transform
             />
           ))}
         </div>
@@ -334,7 +438,17 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
           <span>Nodes: {nodes.length}</span>
           <span>Connections: {connections.length}</span>
           <span>Zoom: {Math.round(scale * 100)}%</span>
-          <span>Selected: {selectedNodeId ? 1 : 0}</span>
+          <span>Selected: {selectedNodeIds.size || (selectedNodeId ? 1 : 0)}</span>
+        </div>
+      </div>
+
+      {/* Instructions */}
+      <div className="absolute bottom-4 right-4 glass-effect rounded-lg px-3 py-2 shadow-lg max-w-xs">
+        <div className="text-xs text-gray-600 dark:text-gray-300">
+          <div>• Drag to pan workspace</div>
+          <div>• Shift+drag to select multiple nodes</div>
+          <div>• Mouse wheel to zoom</div>
+          <div>• Right-click nodes for options</div>
         </div>
       </div>
     </div>

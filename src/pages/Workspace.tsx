@@ -21,18 +21,22 @@ const Workspace: React.FC = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  const handleNodeAdd = (nodeType: NodeType['type']) => {
-    // Find center of visible canvas area
-    const canvasRect = { width: 1200, height: 800 }; // Approximate canvas size
-    const centerX = canvasRect.width / 2;
-    const centerY = canvasRect.height / 2;
+  const handleNodeAdd = (nodeType: NodeType['type'], position?: { x: number; y: number }) => {
+    // Use provided position or find center of visible canvas area
+    let centerX = 400; // Default center X
+    let centerY = 300; // Default center Y
+    
+    if (position) {
+      centerX = position.x;
+      centerY = position.y;
+    }
     
     const newNode: NodeData = {
       id: Date.now().toString(),
       type: nodeType,
       label: `${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)} ${nodes.length + 1}`,
-      x: centerX + Math.random() * 100 - 50, // Add some randomness to avoid overlap
-      y: centerY + Math.random() * 100 - 50,
+      x: centerX + Math.random() * 50 - 25, // Add some randomness to avoid overlap
+      y: centerY + Math.random() * 50 - 25,
       activation: nodeType === 'input' ? undefined : 'ReLU',
     };
     
