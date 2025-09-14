@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Circle, Square, Triangle, Zap } from 'lucide-react';
 
@@ -16,6 +16,10 @@ interface NodeProps {
   node: NodeData;
   onSelect?: (nodeId: string) => void;
   onDrag?: (nodeId: string, x: number, y: number) => void;
+  onConnectionStart?: (nodeId: string, event: React.MouseEvent) => void;
+  onConnectionEnd?: (nodeId: string) => void;
+  onContextMenu?: (nodeId: string, position: { x: number; y: number }) => void;
+  connectionInProgress?: boolean;
   scale?: number;
 }
 
@@ -23,8 +27,22 @@ const Node: React.FC<NodeProps> = ({
   node, 
   onSelect, 
   onDrag, 
+  onConnectionStart,
+  onConnectionEnd,
+  onContextMenu,
+  connectionInProgress = false,
   scale = 1 
 }) => {
+  const [isHovering, setIsHovering] = useState(false);
+
+  const handleContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault(); // Prevent browser context menu
+    event.stopPropagation();
+    
+    if (onContextMenu) {
+      onContextMenu(node.id, { x: event.clientX, y: event.clientY });
+    }
+  };
   const getNodeIcon = () => {
     switch (node.type) {
       case 'input':
@@ -57,6 +75,20 @@ const Node: React.FC<NodeProps> = ({
 
   const Icon = getNodeIcon();
 
+  const handleConnectionStart = (event: React.MouseEvent, side: 'left' | 'right') => {
+    event.stopPropagation();
+    if (onConnectionStart) {
+      onConnectionStart(node.id, event);
+    }
+  };
+
+  const handleConnectionEnd = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (onConnectionEnd) {
+      onConnectionEnd(node.id);
+    }
+  };
+
   return (
     <motion.div
       className={`absolute cursor-grab active:cursor-grabbing ${
@@ -81,8 +113,11 @@ const Node: React.FC<NodeProps> = ({
           );
         }
       }}
-      whileHover={{ scale: 1.1 }}
-      whileDrag={{ scale: 1.2, zIndex: 30 }}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+      onContextMenu={handleContextMenu}
+      whileHover={{ scale: 1.05 }}
+      whileDrag={{ scale: 1.1, zIndex: 30 }}
     >
       <div
         className={`neural-node w-16 h-16 flex items-center justify-center ${getNodeColor()} ${
@@ -108,8 +143,27 @@ const Node: React.FC<NodeProps> = ({
       )}
       
       {/* Connection Points */}
-      <div className="absolute -left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full opacity-0 hover:opacity-100 transition-opacity cursor-crosshair"></div>
-      <div className="absolute -right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full opacity-0 hover:opacity-100 transition-opacity cursor-crosshair"></div>
+      {/* Input connection point (only show on non-input nodes) */}
+      {node.type !== 'input' && (
+        <div 
+          className={`absolute -left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white dark:bg-gray-800 border-2 border-blue-400 rounded-full transition-all duration-200 cursor-crosshair ${
+            isHovering ? 'opacity-100 scale-110' : 'opacity-0'
+          }`}
+          onMouseDown={(e) => handleConnectionEnd(e)}
+          title="Connect input"
+        />
+      )}
+      
+      {/* Output connection point (only show on non-output nodes) */}
+      {node.type !== 'output' && (
+        <div 
+          className={`absolute -right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white dark:bg-gray-800 border-2 border-green-400 rounded-full transition-all duration-200 cursor-crosshair ${
+            isHovering ? 'opacity-100 scale-110' : 'opacity-0'
+          }`}
+          onMouseDown={(e) => handleConnectionStart(e, 'right')}
+          title="Connect output"
+        />
+      )}
     </motion.div>
   );
 };
