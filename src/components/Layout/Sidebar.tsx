@@ -9,7 +9,7 @@ interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
   selectedNode?: NodeData | null;
-  onNodeAdd?: (nodeType: NodeType['type']) => void;
+  onNodeAdd?: (nodeType: NodeType['type'], position?: { x: number; y: number }) => void;
   onNodeUpdate?: (nodeId: string, updates: Partial<NodeData>) => void;
   onNodeDelete?: (nodeId: string) => void;
   onNodeDragStart?: (nodeType: NodeType) => void;
@@ -46,7 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: SettingsIcon,
       component: (
         <PropertiesPanel
-          selectedNode={selectedNode}
+          selectedNode={selectedNode || null}
           onNodeUpdate={onNodeUpdate}
           onNodeDelete={onNodeDelete}
         />

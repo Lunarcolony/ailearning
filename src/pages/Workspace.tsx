@@ -35,8 +35,8 @@ const Workspace: React.FC = () => {
       id: Date.now().toString(),
       type: nodeType,
       label: `${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)} ${nodes.length + 1}`,
-      x: centerX + Math.random() * 50 - 25, // Add some randomness to avoid overlap
-      y: centerY + Math.random() * 50 - 25,
+      x: centerX + Math.random() * 10 - 5, // Add small randomness to avoid exact overlap
+      y: centerY + Math.random() * 10 - 5,
       activation: nodeType === 'input' ? undefined : 'ReLU',
     };
     

@@ -69,7 +69,7 @@ const nodeTypes: NodeType[] = [
 
 interface NodePaletteProps {
   onNodeDragStart?: (nodeType: NodeType) => void;
-  onNodeAdd?: (nodeType: NodeType['type']) => void;
+  onNodeAdd?: (nodeType: NodeType['type'], position?: { x: number; y: number }) => void;
 }
 
 const NodePalette: React.FC<NodePaletteProps> = ({ onNodeDragStart, onNodeAdd }) => {
@@ -81,7 +81,7 @@ const NodePalette: React.FC<NodePaletteProps> = ({ onNodeDragStart, onNodeAdd })
     }
   };
 
-  const handleDragStart = (event: React.DragEvent, nodeType: NodeType) => {
+  const handleDragStart = (event: React.DragEvent<HTMLDivElement>, nodeType: NodeType) => {
     event.dataTransfer.setData('application/json', JSON.stringify(nodeType));
     if (onNodeDragStart) {
       onNodeDragStart(nodeType);
