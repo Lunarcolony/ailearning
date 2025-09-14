@@ -11,7 +11,7 @@ interface WorkspaceCanvasProps {
   selectedNodeId?: string | null;
   onNodeSelect?: (nodeId: string) => void;
   onNodeDrag?: (nodeId: string, x: number, y: number) => void;
-  onNodeAdd?: (nodeType: NodeData['type']) => void;
+  onNodeAdd?: (nodeType: NodeData['type'], position?: { x: number; y: number }) => void;
 }
 
 const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ 
@@ -151,13 +151,18 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     
     try {
       const nodeTypeData = JSON.parse(event.dataTransfer.getData('application/json'));
-      // Note: For now we'll add the node at the center since we need to modify onNodeAdd
-      // to accept position parameters for proper drop positioning
-      onNodeAdd(nodeTypeData.type);
+      
+      // Calculate drop position relative to canvas
+      const rect = canvasRef.current.getBoundingClientRect();
+      const dropX = (event.clientX - rect.left - panOffset.x) / scale;
+      const dropY = (event.clientY - rect.top - panOffset.y) / scale;
+      
+      // Call onNodeAdd with the calculated position
+      onNodeAdd(nodeTypeData.type, { x: dropX, y: dropY });
     } catch (error) {
       console.error('Failed to parse dropped node data:', error);
     }
-  }, [onNodeAdd]);
+  }, [onNodeAdd, panOffset, scale]);
 
   // Handle node selection - support multi-select
   const handleNodeSelect = useCallback((nodeId: string, multiSelect: boolean = false) => {
@@ -241,6 +246,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
   // Handle canvas panning and selection
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only handle mouse down on the canvas itself, not on nodes
     if (e.target !== e.currentTarget) return;
     
     if (e.shiftKey) {
@@ -250,6 +256,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       // Start panning
       setIsPanning(true);
       setLastPanPoint({ x: e.clientX, y: e.clientY });
+      e.preventDefault(); // Prevent default to avoid text selection
       // Clear selection when clicking on canvas
       setSelectedNodeIds(new Set());
       if (onNodeSelect) {

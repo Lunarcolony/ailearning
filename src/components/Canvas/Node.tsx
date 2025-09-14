@@ -34,6 +34,7 @@ const Node: React.FC<NodeProps> = ({
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isDraggedOver, setIsDraggedOver] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; nodeStartX: number; nodeStartY: number } | null>(null);
 
   const handleContextMenu = (event: React.MouseEvent) => {
@@ -123,6 +124,7 @@ const Node: React.FC<NodeProps> = ({
 
   const handleConnectionStart = (event: React.MouseEvent, side: 'left' | 'right') => {
     event.stopPropagation();
+    event.preventDefault();
     if (onConnectionStart) {
       onConnectionStart(node.id, event);
     }
@@ -130,8 +132,49 @@ const Node: React.FC<NodeProps> = ({
 
   const handleConnectionEnd = (event: React.MouseEvent) => {
     event.stopPropagation();
+    event.preventDefault();
     if (onConnectionEnd) {
       onConnectionEnd(node.id);
+    }
+  };
+
+  // Handle drag-to-connect functionality
+  const handleDragStart = (event: React.DragEvent) => {
+    // Set drag data for node-to-node connections
+    event.dataTransfer.setData('application/json', JSON.stringify({ 
+      type: 'node-connection',
+      sourceNodeId: node.id 
+    }));
+    event.dataTransfer.effectAllowed = 'link';
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'link';
+    setIsDraggedOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDraggedOver(false);
+  };
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDraggedOver(false);
+    
+    try {
+      const dragData = JSON.parse(event.dataTransfer.getData('application/json'));
+      if (dragData.type === 'node-connection' && dragData.sourceNodeId !== node.id) {
+        // Trigger connection between source and target nodes
+        if (onConnectionEnd) {
+          // First set up the connection source
+          onConnectionStart?.(dragData.sourceNodeId, event as any);
+          // Then complete the connection to this node
+          onConnectionEnd(node.id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to parse drag data:', error);
     }
   };
 
@@ -139,7 +182,7 @@ const Node: React.FC<NodeProps> = ({
     <div
       className={`absolute select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} ${
         node.selected ? 'z-20' : 'z-10'
-      }`}
+      } ${isDraggedOver ? 'ring-2 ring-yellow-400' : ''}`}
       style={{
         left: node.x,
         top: node.y,
@@ -150,6 +193,11 @@ const Node: React.FC<NodeProps> = ({
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onContextMenu={handleContextMenu}
+      draggable={!isDragging} // Allow dragging for connections when not moving the node
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <div
         className={`neural-node w-16 h-16 flex items-center justify-center ${getNodeColor()} ${
