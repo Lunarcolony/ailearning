@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Package, Settings as SettingsIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Package, Settings as SettingsIcon, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NodePalette, { NodeType } from '../Sidebar/NodePalette';
 import PropertiesPanel from '../Sidebar/PropertiesPanel';
+import LayersPanel from '../Sidebar/LayersPanel';
 import { NodeData } from '../Canvas/Node';
 
 interface SidebarProps {
@@ -15,7 +16,7 @@ interface SidebarProps {
   onNodeDragStart?: (nodeType: NodeType) => void;
 }
 
-type ActiveTab = 'nodes' | 'properties';
+type ActiveTab = 'nodes' | 'layers' | 'properties';
 
 const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
@@ -39,6 +40,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           onNodeDragStart={onNodeDragStart}
         />
       )
+    },
+    {
+      id: 'layers' as const,
+      label: 'Layers',
+      icon: Layers,
+      component: <LayersPanel />
     },
     {
       id: 'properties' as const,

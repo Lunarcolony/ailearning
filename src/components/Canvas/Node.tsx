@@ -9,6 +9,7 @@ export interface NodeData {
   y: number;
   activation?: string;
   selected?: boolean;
+  layerId?: string;
 }
 
 interface NodeProps {
@@ -20,6 +21,8 @@ interface NodeProps {
   onContextMenu?: (nodeId: string, position: { x: number; y: number }) => void;
   connectionInProgress?: boolean;
   scale?: number;
+  layerColor?: string;
+  layerVisible?: boolean;
 }
 
 const Node: React.FC<NodeProps> = ({ 
@@ -30,7 +33,9 @@ const Node: React.FC<NodeProps> = ({
   onConnectionEnd,
   onContextMenu,
   connectionInProgress = false,
-  scale = 1 
+  scale = 1,
+  layerColor,
+  layerVisible = true
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -192,7 +197,9 @@ const Node: React.FC<NodeProps> = ({
     <div
       className={`absolute select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} ${
         node.selected ? 'z-20' : 'z-10'
-      } ${isDraggedOver ? 'ring-2 ring-yellow-400' : ''}`}
+      } ${isDraggedOver ? 'ring-2 ring-yellow-400' : ''} ${
+        !layerVisible ? 'opacity-30 pointer-events-none' : ''
+      }`}
       style={{
         left: node.x,
         top: node.y,
@@ -207,6 +214,15 @@ const Node: React.FC<NodeProps> = ({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {/* Layer Color Indicator */}
+      {layerColor && (
+        <div
+          className="absolute -top-1 -left-1 w-3 h-3 rounded-full border-2 border-white dark:border-gray-900"
+          style={{ backgroundColor: layerColor }}
+          title={`Layer: ${node.layerId || 'default'}`}
+        />
+      )}
+      
       <div
         className={`neural-node w-16 h-16 flex items-center justify-center ${getNodeColor()} ${
           node.selected 

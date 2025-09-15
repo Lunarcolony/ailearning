@@ -1,9 +1,11 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import { Plus, Minus, RotateCcw, Move } from 'lucide-react';
 import Node, { NodeData } from './Node';
 import SimpleConnectionManager from './SimpleConnectionManager';
 import ContextMenu from './ContextMenu';
 import { useConnections } from '../../hooks/useConnections';
+import { RootState } from '../../store';
 
 interface WorkspaceCanvasProps {
   className?: string;
@@ -22,6 +24,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
   onNodeDrag,
   onNodeAdd
 }) => {
+  // Get layer information from Redux store
+  const { layers } = useSelector((state: RootState) => state.nodes);
   const [scale, setScale] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -56,20 +60,53 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     removeNodeConnections
   } = useConnections();
 
+  // Convert Redux nodes to NodeData format expected by canvas
+  const canvasNodes = useMemo(() => {
+    return nodes.map(node => ({
+      id: node.id,
+      type: node.type as 'input' | 'hidden' | 'output' | 'activation',
+      label: node.data?.label || `Node ${node.id}`,
+      x: node.position.x,
+      y: node.position.y,
+      activation: node.data?.activation,
+      selected: selectedNodeIds.has(node.id) || node.id === selectedNodeId,
+      layerId: node.layerId
+    }));
+  }, [nodes, selectedNodeIds, selectedNodeId]);
+
+  // Create nodes with selection state and layer information
+  const nodesWithSelection = useMemo(() => {
+    return canvasNodes.map(node => {
+      const layer = layers.find(l => l.id === (node.layerId || 'default'));
+      return { 
+        ...node, 
+        layerColor: layer?.color,
+        layerVisible: layer?.visible !== false
+      };
+    });
+  }, [canvasNodes, layers]);
+
   // Add some default connections for demonstration
   React.useEffect(() => {
     // Add some sample connections if none exist
-    if (connections.length === 0 && nodes.length >= 4) {
+    if (connections.length === 0 && canvasNodes.length >= 4) {
       // Connect the original 4 nodes in sequence
       const timer = setTimeout(() => {
-        addConnection({ sourceNodeId: '1', targetNodeId: '2' }); // Data Input -> Hidden 1
-        addConnection({ sourceNodeId: '2', targetNodeId: '3' }); // Hidden 1 -> Hidden 2  
-        addConnection({ sourceNodeId: '3', targetNodeId: '4' }); // Hidden 2 -> Output
+        // Find nodes by their labels instead of hardcoded IDs
+        const inputNode = canvasNodes.find(n => n.type === 'input');
+        const hiddenNodes = canvasNodes.filter(n => n.type === 'hidden');
+        const outputNode = canvasNodes.find(n => n.type === 'output');
+        
+        if (inputNode && hiddenNodes.length >= 2 && outputNode) {
+          addConnection({ sourceNodeId: inputNode.id, targetNodeId: hiddenNodes[0].id });
+          addConnection({ sourceNodeId: hiddenNodes[0].id, targetNodeId: hiddenNodes[1].id });
+          addConnection({ sourceNodeId: hiddenNodes[1].id, targetNodeId: outputNode.id });
+        }
       }, 1000);
       
       return () => clearTimeout(timer);
     }
-  }, [nodes, connections, addConnection]);
+  }, [canvasNodes, connections, addConnection]);
 
   // Connection handlers
   const handleConnectionAdd = useCallback((sourceNodeId: string, targetNodeId: string) => {
@@ -124,12 +161,12 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
 
   const handleContextMenuDuplicate = useCallback(() => {
     if (contextMenu.nodeId && onNodeAdd) {
-      const sourceNode = nodes.find(n => n.id === contextMenu.nodeId);
+      const sourceNode = canvasNodes.find(n => n.id === contextMenu.nodeId);
       if (sourceNode) {
         onNodeAdd(sourceNode.type);
       }
     }
-  }, [contextMenu.nodeId, nodes, onNodeAdd]);
+  }, [contextMenu.nodeId, canvasNodes, onNodeAdd]);
 
   const handleContextMenuDelete = useCallback(() => {
     if (contextMenu.nodeId && onNodeSelect) {
@@ -226,7 +263,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     
     // Find nodes within selection bounds
     const selectedIds = new Set<string>();
-    nodes.forEach(node => {
+    canvasNodes.forEach(node => {
       if (node.x >= minX && node.x + 64 <= maxX && 
           node.y >= minY && node.y + 64 <= maxY) {
         selectedIds.add(node.id);
@@ -326,15 +363,6 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     }
   };
 
-  // Create nodes with selection state
-  const nodesWithSelection = useMemo(() => 
-    nodes.map(node => ({ 
-      ...node, 
-      selected: selectedNodeIds.has(node.id) || node.id === selectedNodeId 
-    })), 
-    [nodes, selectedNodeIds, selectedNodeId]
-  );
-
   // Selection box rendering helper
   const renderSelectionBox = () => {
     if (!selectionBox?.isActive) return null;
@@ -386,9 +414,12 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
           {/* Selection Box */}
           {renderSelectionBox()}
           
-          {/* Connection Manager */}
+          {/* Connection Manager - only show connections for visible nodes */}
           <SimpleConnectionManager
-            nodes={nodes}
+            nodes={canvasNodes.filter(node => {
+              const layer = layers.find(l => l.id === (node.layerId || 'default'));
+              return layer?.visible !== false;
+            })}
             connections={connections}
             selectedConnectionId={selectedConnectionId}
             onConnectionAdd={handleConnectionAdd}
@@ -407,6 +438,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               onConnectionEnd={handleConnectionEnd}
               onContextMenu={handleNodeContextMenu}
               scale={1} // Scale is handled by parent transform
+              layerColor={node.layerColor}
+              layerVisible={node.layerVisible}
             />
           ))}
         </div>
@@ -416,8 +449,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       <ContextMenu
         isOpen={contextMenu.isOpen}
         position={contextMenu.position}
-        node={contextMenu.nodeId ? nodes.find(n => n.id === contextMenu.nodeId) || null : null}
-        availableNodes={nodes}
+        node={contextMenu.nodeId ? canvasNodes.find(n => n.id === contextMenu.nodeId) || null : null}
+        availableNodes={canvasNodes}
         onClose={handleContextMenuClose}
         onConnectTo={handleContextMenuConnect}
         onDelete={handleContextMenuDelete}
@@ -457,8 +490,10 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
       {/* Status Bar */}
       <div className="absolute bottom-4 left-4 glass-effect rounded-lg px-3 py-2 shadow-lg">
         <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-300">
-          <span>Nodes: {nodes.length}</span>
+          <span>Nodes: {canvasNodes.length}</span>
+          <span>Visible: {nodesWithSelection.filter(n => n.layerVisible).length}</span>
           <span>Connections: {connections.length}</span>
+          <span>Layers: {layers.length}</span>
           <span>Zoom: {Math.round(scale * 100)}%</span>
           <span>Selected: {selectedNodeIds.size || (selectedNodeId ? 1 : 0)}</span>
         </div>
