@@ -338,13 +338,40 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
     }
   };
 
-  // Create nodes with selection state
+  // Helper function to check if a node should be visible based on layer visibility
+  const isNodeVisible = useCallback((nodeId: string) => {
+    // Find the layer that contains this node
+    const nodeLayer = layers.find(layer => layer.nodeIds.includes(nodeId));
+    
+    // If no layer contains this node, it's visible by default
+    if (!nodeLayer) return true;
+    
+    // If layer has visual properties, check visibility
+    if (nodeLayer.visual) {
+      return nodeLayer.visual.visible;
+    }
+    
+    // If no visual properties, consider it visible
+    return true;
+  }, [layers]);
+
+  // Filter connections to only show those between visible nodes
+  const visibleConnections = useMemo(() => 
+    connections.filter(connection => 
+      isNodeVisible(connection.sourceNodeId) && isNodeVisible(connection.targetNodeId)
+    ), 
+    [connections, isNodeVisible]
+  );
+
+  // Create nodes with selection state, filtering out nodes in hidden layers
   const nodesWithSelection = useMemo(() => 
-    nodes.map(node => ({ 
-      ...node, 
-      selected: selectedNodeIds.has(node.id) || node.id === selectedNodeId 
-    })), 
-    [nodes, selectedNodeIds, selectedNodeId]
+    nodes
+      .filter(node => isNodeVisible(node.id))
+      .map(node => ({ 
+        ...node, 
+        selected: selectedNodeIds.has(node.id) || node.id === selectedNodeId 
+      })), 
+    [nodes, selectedNodeIds, selectedNodeId, isNodeVisible]
   );
 
   // Selection box rendering helper
@@ -416,8 +443,8 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
           
           {/* Connection Manager */}
           <SimpleConnectionManager
-            nodes={nodes}
-            connections={connections}
+            nodes={nodesWithSelection}
+            connections={visibleConnections}
             selectedConnectionId={selectedConnectionId}
             onConnectionAdd={handleConnectionAdd}
             onConnectionDelete={handleConnectionDelete}
