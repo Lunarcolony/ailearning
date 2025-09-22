@@ -1,30 +1,46 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Package, Settings as SettingsIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Package, Settings as SettingsIcon, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NodePalette, { NodeType } from '../Sidebar/NodePalette';
 import PropertiesPanel from '../Sidebar/PropertiesPanel';
+import LayersPanel from '../Sidebar/LayersPanel';
 import { NodeData } from '../Canvas/Node';
+import { Layer } from '../../types';
 
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
   selectedNode?: NodeData | null;
+  layers?: Layer[];
+  selectedLayerIds?: string[];
   onNodeAdd?: (nodeType: NodeType['type'], position?: { x: number; y: number }) => void;
   onNodeUpdate?: (nodeId: string, updates: Partial<NodeData>) => void;
   onNodeDelete?: (nodeId: string) => void;
   onNodeDragStart?: (nodeType: NodeType) => void;
+  onLayerAdd?: () => void;
+  onLayerSelect?: (layerId: string, addToSelection?: boolean) => void;
+  onLayerUpdate?: (layerId: string, updates: Partial<Layer>) => void;
+  onLayerDelete?: (layerId: string) => void;
+  onLayerToggleVisibility?: (layerId: string) => void;
 }
 
-type ActiveTab = 'nodes' | 'properties';
+type ActiveTab = 'nodes' | 'properties' | 'layers';
 
 const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   onToggle,
   selectedNode,
+  layers = [],
+  selectedLayerIds = [],
   onNodeAdd,
   onNodeUpdate,
   onNodeDelete,
-  onNodeDragStart
+  onNodeDragStart,
+  onLayerAdd,
+  onLayerSelect,
+  onLayerUpdate,
+  onLayerDelete,
+  onLayerToggleVisibility
 }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('nodes');
 
@@ -37,6 +53,22 @@ const Sidebar: React.FC<SidebarProps> = ({
         <NodePalette 
           onNodeAdd={onNodeAdd}
           onNodeDragStart={onNodeDragStart}
+        />
+      )
+    },
+    {
+      id: 'layers' as const,
+      label: 'Layers',
+      icon: Layers,
+      component: (
+        <LayersPanel
+          layers={layers}
+          selectedLayerIds={selectedLayerIds}
+          onLayerAdd={onLayerAdd || (() => {})}
+          onLayerSelect={onLayerSelect || (() => {})}
+          onLayerUpdate={onLayerUpdate || (() => {})}
+          onLayerDelete={onLayerDelete || (() => {})}
+          onLayerToggleVisibility={onLayerToggleVisibility || (() => {})}
         />
       )
     },

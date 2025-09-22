@@ -3,24 +3,36 @@ import { Plus, Minus, RotateCcw, Move } from 'lucide-react';
 import Node, { NodeData } from './Node';
 import SimpleConnectionManager from './SimpleConnectionManager';
 import ContextMenu from './ContextMenu';
+import VisualLayer from './VisualLayer';
 import { useConnections } from '../../hooks/useConnections';
+import { Layer } from '../../types';
 
 interface WorkspaceCanvasProps {
   className?: string;
   nodes?: NodeData[];
+  layers?: Layer[];
   selectedNodeId?: string | null;
+  selectedLayerIds?: string[];
   onNodeSelect?: (nodeId: string) => void;
   onNodeDrag?: (nodeId: string, x: number, y: number) => void;
   onNodeAdd?: (nodeType: NodeData['type'], position?: { x: number; y: number }) => void;
+  onLayerSelect?: (layerId: string) => void;
+  onLayerMove?: (layerId: string, x: number, y: number) => void;
+  onLayerResize?: (layerId: string, width: number, height: number) => void;
 }
 
 const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({ 
   className = '', 
   nodes = [],
+  layers = [],
   selectedNodeId,
+  selectedLayerIds = [],
   onNodeSelect,
   onNodeDrag,
-  onNodeAdd
+  onNodeAdd,
+  onLayerSelect,
+  onLayerMove,
+  onLayerResize
 }) => {
   const [scale, setScale] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -385,6 +397,22 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
         >
           {/* Selection Box */}
           {renderSelectionBox()}
+          
+          {/* Visual Layers - rendered behind nodes */}
+          {layers
+            .filter(layer => layer.visual?.visible)
+            .sort((a, b) => (a.visual?.zIndex || 0) - (b.visual?.zIndex || 0))
+            .map(layer => (
+              <VisualLayer
+                key={layer.id}
+                layer={layer}
+                isSelected={selectedLayerIds.includes(layer.id)}
+                onSelect={onLayerSelect || (() => {})}
+                onMove={(layerId, x, y) => onLayerMove && onLayerMove(layerId, x, y)}
+                onResize={(layerId, width, height) => onLayerResize && onLayerResize(layerId, width, height)}
+                scale={1} // Scale is handled by parent transform
+              />
+            ))}
           
           {/* Connection Manager */}
           <SimpleConnectionManager

@@ -4,6 +4,7 @@ import WorkspaceCanvas from '../components/Canvas/WorkspaceCanvas';
 import Sidebar from '../components/Layout/Sidebar';
 import Header from '../components/Layout/Header';
 import { NodeType } from '../components/Sidebar/NodePalette';
+import { useLayers } from '../hooks/useLayers';
 
 const Workspace: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -15,7 +16,22 @@ const Workspace: React.FC = () => {
   ]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
+  // Use the layers hook
+  const {
+    layers,
+    selectedLayers,
+    addLayer,
+    updateLayer,
+    removeLayer,
+    selectLayer,
+    clearSelection,
+    moveLayer,
+    resizeLayer,
+    toggleLayerVisibility,
+  } = useLayers();
+
   const selectedNode = nodes.find(node => node.id === selectedNodeId) || null;
+  const selectedLayerIds = selectedLayers.map(layer => layer.id);
 
   const handleToggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -64,6 +80,40 @@ const Workspace: React.FC = () => {
     handleNodeUpdate(nodeId, { x, y });
   };
 
+  // Layer management functions
+  const handleLayerAdd = () => {
+    const layerCount = layers.length + 1;
+    const defaultColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+    const color = defaultColors[(layerCount - 1) % defaultColors.length];
+    
+    addLayer({
+      name: `Layer ${layerCount}`,
+      type: 'custom',
+      nodeIds: [],
+      position: layerCount,
+      visual: {
+        position: { x: 50 + (layerCount * 20), y: 50 + (layerCount * 20) },
+        dimensions: { width: 300, height: 200 },
+        color,
+        opacity: 0.3,
+        visible: true,
+        zIndex: layerCount,
+      },
+    });
+  };
+
+  const handleLayerSelect = (layerId: string, addToSelection = false) => {
+    selectLayer(layerId, addToSelection);
+  };
+
+  const handleLayerMove = (layerId: string, x: number, y: number) => {
+    moveLayer(layerId, { x, y });
+  };
+
+  const handleLayerResize = (layerId: string, width: number, height: number) => {
+    resizeLayer(layerId, { width, height });
+  };
+
   return (
     <div className="h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-white flex flex-col">
       <Header />
@@ -72,17 +122,29 @@ const Workspace: React.FC = () => {
           isOpen={isSidebarOpen}
           onToggle={handleToggleSidebar}
           selectedNode={selectedNode}
+          layers={layers}
+          selectedLayerIds={selectedLayerIds}
           onNodeAdd={handleNodeAdd}
           onNodeUpdate={handleNodeUpdate}
           onNodeDelete={handleNodeDelete}
+          onLayerAdd={handleLayerAdd}
+          onLayerSelect={handleLayerSelect}
+          onLayerUpdate={updateLayer}
+          onLayerDelete={removeLayer}
+          onLayerToggleVisibility={toggleLayerVisibility}
         />
         <div className="flex-1 relative">
           <WorkspaceCanvas 
             nodes={nodes}
+            layers={layers}
             selectedNodeId={selectedNodeId}
+            selectedLayerIds={selectedLayerIds}
             onNodeSelect={handleNodeSelect}
             onNodeDrag={handleNodeDrag}
             onNodeAdd={handleNodeAdd}
+            onLayerSelect={(layerId) => handleLayerSelect(layerId, false)}
+            onLayerMove={handleLayerMove}
+            onLayerResize={handleLayerResize}
           />
         </div>
       </div>

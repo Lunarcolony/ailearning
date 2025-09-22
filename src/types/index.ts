@@ -100,10 +100,19 @@ export interface Connection {
 export interface Layer {
   id: string;
   name: string;
-  type: 'input' | 'hidden' | 'output';
+  type: 'input' | 'hidden' | 'output' | 'custom';
   nodeIds: string[];
   position: number; // Order in the network
   configuration?: Record<string, any>;
+  // Visual properties for translucent boxes
+  visual?: {
+    position: Position;
+    dimensions: Dimensions;
+    color: string;
+    opacity: number;
+    visible: boolean;
+    zIndex: number;
+  };
   createdAt: number;
   updatedAt: number;
 }
@@ -307,4 +316,20 @@ export interface UseConnectionsReturn {
   deselectConnection: (id: string) => void;
   getNodeConnections: (nodeId: string) => Connection[];
   validateConnection: (sourceId: string, targetId: string) => ValidationResult;
+}
+
+export interface UseLayersReturn {
+  layers: Layer[];
+  selectedLayers: Layer[];
+  addLayer: (layer: Omit<Layer, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateLayer: (id: string, updates: Partial<Layer>) => void;
+  removeLayer: (id: string) => void;
+  selectLayer: (id: string, addToSelection?: boolean) => void;
+  deselectLayer: (id: string) => void;
+  clearSelection: () => void;
+  moveLayer: (id: string, position: Position) => void;
+  resizeLayer: (id: string, dimensions: Dimensions) => void;
+  toggleLayerVisibility: (id: string) => void;
+  assignNodeToLayer: (nodeId: string, layerId: string) => void;
+  removeNodeFromLayer: (nodeId: string, layerId: string) => void;
 }

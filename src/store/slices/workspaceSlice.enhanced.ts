@@ -271,6 +271,59 @@ const workspaceSlice = createSlice({
       state.selectedItems.layerIds = state.selectedItems.layerIds.filter(id => id !== layerId);
       state.updatedAt = Date.now();
     },
+
+    selectLayer: (state, action: PayloadAction<{ layerId: string; addToSelection?: boolean }>) => {
+      const { layerId, addToSelection } = action.payload;
+      if (addToSelection) {
+        if (!state.selectedItems.layerIds.includes(layerId)) {
+          state.selectedItems.layerIds.push(layerId);
+        }
+      } else {
+        state.selectedItems.layerIds = [layerId];
+      }
+      state.updatedAt = Date.now();
+    },
+
+    deselectLayer: (state, action: PayloadAction<string>) => {
+      const layerId = action.payload;
+      state.selectedItems.layerIds = state.selectedItems.layerIds.filter(id => id !== layerId);
+      state.updatedAt = Date.now();
+    },
+
+    clearLayerSelection: (state) => {
+      state.selectedItems.layerIds = [];
+      state.updatedAt = Date.now();
+    },
+
+    moveLayer: (state, action: PayloadAction<{ layerId: string; position: Position }>) => {
+      const { layerId, position } = action.payload;
+      const layer = state.layers[layerId];
+      if (layer?.visual) {
+        layer.visual.position = position;
+        layer.updatedAt = Date.now();
+        state.updatedAt = Date.now();
+      }
+    },
+
+    resizeLayer: (state, action: PayloadAction<{ layerId: string; dimensions: Dimensions }>) => {
+      const { layerId, dimensions } = action.payload;
+      const layer = state.layers[layerId];
+      if (layer?.visual) {
+        layer.visual.dimensions = dimensions;
+        layer.updatedAt = Date.now();
+        state.updatedAt = Date.now();
+      }
+    },
+
+    toggleLayerVisibility: (state, action: PayloadAction<string>) => {
+      const layerId = action.payload;
+      const layer = state.layers[layerId];
+      if (layer?.visual) {
+        layer.visual.visible = !layer.visual.visible;
+        layer.updatedAt = Date.now();
+        state.updatedAt = Date.now();
+      }
+    },
     
     // History management
     pushHistory: (state, action: PayloadAction<any>) => {
@@ -399,6 +452,12 @@ export const {
   addLayer,
   updateLayer,
   removeLayer,
+  selectLayer,
+  deselectLayer,
+  clearLayerSelection,
+  moveLayer,
+  resizeLayer,
+  toggleLayerVisibility,
   pushHistory,
   undo,
   redo,
