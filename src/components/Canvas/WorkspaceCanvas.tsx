@@ -441,7 +441,7 @@ const WorkspaceCanvas: React.FC<WorkspaceCanvasProps> = ({
               />
             ))}
           
-          {/* Connection Manager */}
+          {/* Connection Manager - positioned inside transformed container with expanded bounds */}
           <SimpleConnectionManager
             nodes={nodesWithSelection}
             connections={visibleConnections}
