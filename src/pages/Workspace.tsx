@@ -77,7 +77,7 @@ const Workspace: React.FC = () => {
   };
 
   const handleNodeDrag = (nodeId: string, x: number, y: number) => {
-    handleNodeUpdate(nodeId, { x, y });
+    handleNodeDragEnd(nodeId, x, y);
   };
 
   // Layer management functions
@@ -112,6 +112,45 @@ const Workspace: React.FC = () => {
 
   const handleLayerResize = (layerId: string, width: number, height: number) => {
     resizeLayer(layerId, { width, height });
+  };
+
+  // Helper function to check if a node is inside a layer
+  const isNodeInLayer = (nodeX: number, nodeY: number, layer: any) => {
+    if (!layer.visual) return false;
+    const { position, dimensions } = layer.visual;
+    return (
+      nodeX >= position.x &&
+      nodeX <= position.x + dimensions.width &&
+      nodeY >= position.y &&
+      nodeY <= position.y + dimensions.height
+    );
+  };
+
+  // Auto-assign nodes to layers based on position
+  const handleNodeDragEnd = (nodeId: string, x: number, y: number) => {
+    handleNodeUpdate(nodeId, { x, y });
+    
+    // Check which layer this node is in
+    for (const layer of layers) {
+      if (layer.visual && isNodeInLayer(x, y, layer)) {
+        if (!layer.nodeIds.includes(nodeId)) {
+          // Remove node from other layers
+          layers.forEach(otherLayer => {
+            if (otherLayer.id !== layer.id && otherLayer.nodeIds.includes(nodeId)) {
+              updateLayer(otherLayer.id, {
+                nodeIds: otherLayer.nodeIds.filter(id => id !== nodeId)
+              });
+            }
+          });
+          
+          // Add node to this layer
+          updateLayer(layer.id, {
+            nodeIds: [...layer.nodeIds, nodeId]
+          });
+        }
+        break;
+      }
+    }
   };
 
   return (

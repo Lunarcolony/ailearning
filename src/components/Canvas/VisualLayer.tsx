@@ -31,7 +31,9 @@ const VisualLayer: React.FC<VisualLayerProps> = ({
     e.stopPropagation();
     onSelect(layer.id);
     
-    if (e.target === layerRef.current) {
+    // Only start dragging if clicking on the main layer area, not resize handles
+    const target = e.target as HTMLElement;
+    if (target === layerRef.current || target.closest('.layer-content')) {
       setIsDragging(true);
       setDragStart({ x: e.clientX, y: e.clientY });
       setInitialPos({ x: visual.position.x, y: visual.position.y });
@@ -86,59 +88,62 @@ const VisualLayer: React.FC<VisualLayerProps> = ({
       }}
       onMouseDown={handleMouseDown}
     >
-      {/* Layer Label */}
-      <div
-        className="absolute -top-6 left-0 bg-white dark:bg-gray-800 px-2 py-1 rounded text-xs font-medium shadow-sm border border-gray-200 dark:border-gray-600"
-        style={{ opacity: 1 }}
-      >
-        {layer.name}
+      {/* Main layer content area */}
+      <div className="layer-content w-full h-full">
+        {/* Layer Label */}
+        <div
+          className="absolute -top-6 left-0 bg-white dark:bg-gray-800 px-2 py-1 rounded text-xs font-medium shadow-sm border border-gray-200 dark:border-gray-600 pointer-events-none"
+          style={{ opacity: 1 }}
+        >
+          {layer.name}
+        </div>
+
+        {/* Node count indicator */}
+        <div className="absolute bottom-2 right-2 text-xs opacity-70 pointer-events-none">
+          {layer.nodeIds.length} nodes
+        </div>
       </div>
 
-      {/* Resize Handles */}
+      {/* Resize Handles - Only show when selected */}
       {isSelected && (
         <>
           {/* Corner handles */}
           <div
-            className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-400 cursor-nw-resize"
+            className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-400 cursor-nw-resize z-10"
             onMouseDown={(e) => handleResizeStart(e, 'se')}
           />
           <div
-            className="absolute -top-1 -right-1 w-3 h-3 bg-blue-400 cursor-ne-resize"
+            className="absolute -top-1 -right-1 w-3 h-3 bg-blue-400 cursor-ne-resize z-10"
             onMouseDown={(e) => handleResizeStart(e, 'ne')}
           />
           <div
-            className="absolute -top-1 -left-1 w-3 h-3 bg-blue-400 cursor-nw-resize"
+            className="absolute -top-1 -left-1 w-3 h-3 bg-blue-400 cursor-nw-resize z-10"
             onMouseDown={(e) => handleResizeStart(e, 'nw')}
           />
           <div
-            className="absolute -bottom-1 -left-1 w-3 h-3 bg-blue-400 cursor-sw-resize"
+            className="absolute -bottom-1 -left-1 w-3 h-3 bg-blue-400 cursor-sw-resize z-10"
             onMouseDown={(e) => handleResizeStart(e, 'sw')}
           />
 
           {/* Edge handles */}
           <div
-            className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-blue-400 cursor-n-resize"
+            className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-blue-400 cursor-n-resize z-10"
             onMouseDown={(e) => handleResizeStart(e, 'n')}
           />
           <div
-            className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-blue-400 cursor-s-resize"
+            className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-blue-400 cursor-s-resize z-10"
             onMouseDown={(e) => handleResizeStart(e, 's')}
           />
           <div
-            className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-blue-400 cursor-w-resize"
+            className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-blue-400 cursor-w-resize z-10"
             onMouseDown={(e) => handleResizeStart(e, 'w')}
           />
           <div
-            className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-blue-400 cursor-e-resize"
+            className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-blue-400 cursor-e-resize z-10"
             onMouseDown={(e) => handleResizeStart(e, 'e')}
           />
         </>
       )}
-
-      {/* Node count indicator */}
-      <div className="absolute bottom-2 right-2 text-xs opacity-70">
-        {layer.nodeIds.length} nodes
-      </div>
     </div>
   );
 };
