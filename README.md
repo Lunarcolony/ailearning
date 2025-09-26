@@ -4,7 +4,6 @@
 
 ### *Democratizing AI through Visual Design*
 
-[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg?style=for-the-badge)](LICENSE)
 [![React](https://img.shields.io/badge/React-18+-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-7+-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -549,10 +548,6 @@ Submit pull requests and enhancements
 
 </div>
 
-## 📄 License
-
-This project is licensed under the ISC License - see the [LICENSE](LICENSE) file for details.
-
 <div align="center">
 
 ## 🌟 Show Your Support
@@ -637,6 +632,6 @@ Join conversations
 
 **🙏 Thank you for being part of our mission to democratize artificial intelligence!**
 
-<sub>© 2025 Neural Network Designer • Licensed under ISC • Made with passion by the community</sub>
+<sub>© 2025 Neural Network Designer • Made with passion by the community</sub>
 
 </div>
