@@ -14,6 +14,18 @@
 
 ---
 
+## 🎵 NEW: YouTube Transcription Service for Raspberry Pi
+
+**Looking for the YouTube Audio Transcription Service?** 
+
+We now have a simple web application perfect for Raspberry Pi that lets you search for YouTube videos and get their transcriptions! 
+
+👉 **[Quick Start Guide](YOUTUBE_TRANSCRIBER_QUICKSTART.md)** | 📖 **[Full Documentation](youtube_transcriber/README.md)**
+
+![YouTube Transcription Service](https://github.com/user-attachments/assets/117287f6-3cd7-4737-b95e-b8a3169fa963)
+
+---
+
 ## 🎨 What is Neural Network Designer?
 
 **Neural Network Designer** is a revolutionary visual platform that transforms complex neural network architecture into an intuitive **drag-and-drop experience**. Inspired by n8n's workflow automation, we're making machine learning accessible to everyone - from students taking their first AI course to researchers prototyping cutting-edge architectures.

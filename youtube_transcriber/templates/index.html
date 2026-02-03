@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Audio Transcription Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .input-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 120px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .results-section {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .video-result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .video-result:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .video-result.selected {
+            border-color: #667eea;
+            background: #e7e9ff;
+        }
+
+        .video-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .video-channel {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .transcript-section {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .transcript-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 2px solid #ddd;
+        }
+
+        .transcript-text {
+            line-height: 1.8;
+            color: #333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .instructions h3 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #856404;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 YouTube Transcription Service</h1>
+        <p class="subtitle">Identify and transcribe YouTube videos from audio</p>
+
+        <div class="instructions">
+            <h3>📝 How to Use:</h3>
+            <ol>
+                <li>Enter keywords or phrases from the YouTube video you want to find</li>
+                <li>Click "Search Videos" to find matching videos</li>
+                <li>Select a video from the results</li>
+                <li>Click "Get Transcript" to view the full transcription</li>
+            </ol>
+        </div>
+
+        <div class="input-section">
+            <div class="input-group">
+                <label for="searchQuery">🔍 Search Query (e.g., song lyrics, video title, keywords):</label>
+                <input 
+                    type="text" 
+                    id="searchQuery" 
+                    placeholder="Enter keywords from the video..."
+                    autocomplete="off"
+                >
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" id="searchBtn" onclick="searchVideos()">
+                    Search Videos
+                </button>
+                <button class="btn-secondary" id="clearBtn" onclick="clearAll()">
+                    Clear All
+                </button>
+            </div>
+        </div>
+
+        <div id="status" class="status"></div>
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px;">Processing...</p>
+        </div>
+
+        <div id="resultsSection" class="results-section">
+            <h3 style="color: #667eea; margin-bottom: 15px;">📹 Video Results:</h3>
+            <div id="videoResults"></div>
+            <button class="btn-success" id="getTranscriptBtn" onclick="getTranscript()" style="margin-top: 15px; width: 100%;">
+                Get Transcript
+            </button>
+        </div>
+
+        <div id="transcriptSection" class="transcript-section">
+            <h3 style="color: #667eea; margin-bottom: 15px;">📄 Transcript:</h3>
+            <div class="transcript-box">
+                <div id="transcriptText" class="transcript-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedVideoId = null;
+        let currentVideos = [];
+
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            statusEl.style.display = 'block';
+        }
+
+        function hideStatus() {
+            document.getElementById('status').style.display = 'none';
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        async function searchVideos() {
+            const searchQuery = document.getElementById('searchQuery').value.trim();
+            
+            if (!searchQuery) {
+                showStatus('Please enter a search query', 'error');
+                return;
+            }
+
+            hideStatus();
+            showLoading();
+            
+            // Hide previous results
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('transcriptSection').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/identify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        audio: 'dummy',
+                        searchQuery: searchQuery
+                    })
+                });
+
+                const data = await response.json();
+                hideLoading();
+
+                if (!response.ok) {
+                    showStatus(data.error || 'Failed to search videos', 'error');
+                    return;
+                }
+
+                if (data.success && data.videos && data.videos.length > 0) {
+                    currentVideos = data.videos;
+                    displayVideoResults(data.videos);
+                    showStatus(`Found ${data.videos.length} videos!`, 'success');
+                } else {
+                    showStatus('No videos found. Try different keywords.', 'error');
+                }
+            } catch (error) {
+                hideLoading();
+                showStatus('Error connecting to server: ' + error.message, 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        function displayVideoResults(videos) {
+            const resultsContainer = document.getElementById('videoResults');
+            resultsContainer.innerHTML = '';
+
+            videos.forEach((video, index) => {
+                const videoDiv = document.createElement('div');
+                videoDiv.className = 'video-result';
+                videoDiv.onclick = () => selectVideo(video.id, index);
+                videoDiv.innerHTML = `
+                    <div class="video-title">${video.title}</div>
+                    <div class="video-channel">📺 ${video.channel} • ⏱️ ${video.duration}</div>
+                `;
+                resultsContainer.appendChild(videoDiv);
+            });
+
+            document.getElementById('resultsSection').style.display = 'block';
+        }
+
+        function selectVideo(videoId, index) {
+            selectedVideoId = videoId;
+            
+            // Update visual selection
+            const allResults = document.querySelectorAll('.video-result');
+            allResults.forEach((el, i) => {
+                if (i === index) {
+                    el.classList.add('selected');
+                } else {
+                    el.classList.remove('selected');
+                }
+            });
+
+            showStatus('Video selected! Click "Get Transcript" to view transcription.', 'success');
+        }
+
+        async function getTranscript() {
+            if (!selectedVideoId) {
+                showStatus('Please select a video first', 'error');
+                return;
+            }
+
+            hideStatus();
+            showLoading();
+            document.getElementById('transcriptSection').style.display = 'none';
+
+            try {
+                const response = await fetch(`/api/transcript/${selectedVideoId}`);
+                const data = await response.json();
+                hideLoading();
+
+                if (!response.ok) {
+                    showStatus(data.error || 'Failed to fetch transcript', 'error');
+                    return;
+                }
+
+                if (data.success && data.transcript) {
+                    document.getElementById('transcriptText').textContent = data.transcript;
+                    document.getElementById('transcriptSection').style.display = 'block';
+                    showStatus('Transcript loaded successfully!', 'success');
+                } else {
+                    showStatus('No transcript available for this video', 'error');
+                }
+            } catch (error) {
+                hideLoading();
+                showStatus('Error fetching transcript: ' + error.message, 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        function clearAll() {
+            document.getElementById('searchQuery').value = '';
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('transcriptSection').style.display = 'none';
+            hideStatus();
+            selectedVideoId = null;
+            currentVideos = [];
+        }
+
+        // Allow Enter key to search
+        document.getElementById('searchQuery').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchVideos();
+            }
+        });
+    </script>
+</body>
+</html>
