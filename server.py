@@ -10,9 +10,9 @@ import os
 import tempfile
 import base64
 from youtube_transcript_api import YouTubeTranscriptApi
-import requests
-import re
+import yt_dlp
 import logging
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -36,7 +36,7 @@ def index():
 @app.route('/api/identify', methods=['POST'])
 def identify_audio():
     """
-    Identify YouTube video from search query
+    Identify YouTube video from search query using yt-dlp
     """
     try:
         data = request.get_json()
@@ -51,42 +51,56 @@ def identify_audio():
         
         logger.info(f"Searching for: {search_query}")
         
-        # Search YouTube using web scraping
-        search_url = f"https://www.youtube.com/results?search_query={requests.utils.quote(search_query)}"
+        # Use yt-dlp for more reliable YouTube search
+        ydl_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'extract_flat': True,
+            'force_generic_extractor': False,
+            'default_search': 'ytsearch5',  # Search for 5 results
+            'skip_download': True,
+        }
         
         try:
-            response = requests.get(search_url, headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }, timeout=10)
-            
-            # Extract video IDs from the response
-            video_ids = re.findall(r'"videoId":"([^"]+)"', response.text)
-            video_titles = re.findall(r'"title":{"runs":\[{"text":"([^"]+)"}', response.text)
-            
-            # Remove duplicates while preserving order
-            seen = set()
-            unique_videos = []
-            for vid_id, title in zip(video_ids[:10], video_titles[:10]):
-                if vid_id not in seen and len(vid_id) == 11:  # YouTube video IDs are 11 chars
-                    seen.add(vid_id)
-                    unique_videos.append({
-                        'id': vid_id,
-                        'title': title,
-                        'channel': 'YouTube',
-                        'duration': 'N/A',
-                        'thumbnail': f'https://img.youtube.com/vi/{vid_id}/default.jpg',
-                        'link': f'https://www.youtube.com/watch?v={vid_id}'
-                    })
-                    if len(unique_videos) >= 5:
-                        break
-            
-            if not unique_videos:
-                return jsonify({'error': 'No videos found'}), 404
-            
-            return jsonify({
-                'success': True,
-                'videos': unique_videos
-            })
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # Search for videos
+                search_results = ydl.extract_info(f"ytsearch5:{search_query}", download=False)
+                
+                if not search_results or 'entries' not in search_results:
+                    return jsonify({'error': 'No videos found'}), 404
+                
+                unique_videos = []
+                for entry in search_results['entries']:
+                    if entry and entry.get('id'):
+                        video_id = entry['id']
+                        title = entry.get('title', 'Unknown Title')
+                        channel = entry.get('uploader', 'Unknown Channel')
+                        duration = entry.get('duration', 0)
+                        
+                        # Format duration
+                        if duration:
+                            minutes = duration // 60
+                            seconds = duration % 60
+                            duration_str = f"{minutes}:{seconds:02d}"
+                        else:
+                            duration_str = "N/A"
+                        
+                        unique_videos.append({
+                            'id': video_id,
+                            'title': title,
+                            'channel': channel,
+                            'duration': duration_str,
+                            'thumbnail': f'https://img.youtube.com/vi/{video_id}/default.jpg',
+                            'link': f'https://www.youtube.com/watch?v={video_id}'
+                        })
+                
+                if not unique_videos:
+                    return jsonify({'error': 'No videos found'}), 404
+                
+                return jsonify({
+                    'success': True,
+                    'videos': unique_videos
+                })
             
         except Exception as e:
             logger.error(f"Error searching YouTube: {str(e)}")
@@ -100,13 +114,37 @@ def identify_audio():
 @app.route('/api/transcript/<video_id>', methods=['GET'])
 def get_transcript(video_id):
     """
-    Get transcript for a YouTube video
+    Get transcript for a YouTube video with improved error handling
     """
     try:
         logger.info(f"Fetching transcript for video: {video_id}")
         
-        # Fetch the transcript
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+        # Try to fetch the transcript with error handling
+        try:
+            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+        except Exception as transcript_error:
+            # If default language fails, try to get list of available transcripts
+            try:
+                transcript_list_data = YouTubeTranscriptApi.list_transcripts(video_id)
+                # Try to get the first available transcript
+                transcript = transcript_list_data.find_transcript(['en', 'en-US', 'en-GB'])
+                transcript_list = transcript.fetch()
+            except Exception:
+                # If that also fails, try to get any available transcript
+                try:
+                    transcript_list_data = YouTubeTranscriptApi.list_transcripts(video_id)
+                    # Get any available transcript
+                    for transcript in transcript_list_data:
+                        try:
+                            transcript_list = transcript.fetch()
+                            break
+                        except:
+                            continue
+                    else:
+                        raise transcript_error
+                except Exception as e:
+                    logger.error(f"Could not fetch any transcript: {str(e)}")
+                    raise transcript_error
         
         # Format the transcript
         full_transcript = ' '.join([entry['text'] for entry in transcript_list])
@@ -123,8 +161,12 @@ def get_transcript(video_id):
         error_message = str(e)
         
         # Provide helpful error messages
-        if 'Subtitles are disabled' in error_message or 'No transcripts' in error_message:
-            error_message = 'This video does not have captions/subtitles available.'
+        if 'Subtitles are disabled' in error_message or 'No transcripts' in error_message or 'Could not retrieve' in error_message:
+            error_message = 'This video does not have captions/subtitles available. Please try a different video.'
+        elif 'Video unavailable' in error_message:
+            error_message = 'This video is unavailable or has been removed.'
+        elif 'Private video' in error_message:
+            error_message = 'This video is private and transcripts cannot be accessed.'
         
         return jsonify({
             'success': False,
