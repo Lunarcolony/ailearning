@@ -2,6 +2,12 @@
 """
 YouTube Audio Transcription Server
 A Flask server that identifies YouTube videos from audio and returns transcripts
+
+Key Dependencies:
+- yt_dlp: Modern YouTube extractor that's actively maintained and handles API changes.
+  Replaced web scraping approach for more reliable video searching and metadata extraction.
+- youtube_transcript_api: Reliable library for fetching video transcripts.
+- Flask: Lightweight web framework for the REST API.
 """
 
 from flask import Flask, request, jsonify, render_template, send_from_directory
@@ -138,7 +144,7 @@ def get_transcript(video_id):
                         try:
                             transcript_list = transcript.fetch()
                             break
-                        except:
+                        except Exception:
                             continue
                     else:
                         raise transcript_error
