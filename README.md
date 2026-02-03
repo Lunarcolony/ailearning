@@ -5,8 +5,10 @@ A simple, easy-to-setup web service that allows you to identify YouTube videos a
 ## 🌟 Features
 
 - **🎤 Simple Web Interface**: Clean, user-friendly interface accessible from any device on your network
-- **🔍 YouTube Video Search**: Find videos by entering keywords, lyrics, or titles
+- **🔍 YouTube Video Search**: Find videos by entering keywords, lyrics, or titles using yt-dlp for reliable results
 - **📝 Automatic Transcription**: Get full video transcripts with one click
+- **🌐 Multi-Language Support**: Automatically tries multiple languages when fetching transcripts
+- **🛡️ Robust Error Handling**: Improved error messages and fallback mechanisms
 - **🍓 Raspberry Pi Optimized**: Lightweight and designed to run smoothly on Raspberry Pi
 - **🌐 Network Accessible**: Access from any device on your local network
 - **⚡ Easy Setup**: One-command installation script
@@ -175,6 +177,15 @@ ailearning/
 - **Text-based Search**: Uses keyword search rather than audio fingerprinting
 - **Transcript Availability**: Only works with videos that have captions/subtitles enabled
 - **Rate Limiting**: YouTube may rate-limit requests if too many are made quickly
+
+## 🎉 Recent Improvements
+
+### Version 2.0 (Latest)
+- ✅ **Replaced web scraping with yt-dlp**: More reliable YouTube search that works consistently
+- ✅ **Enhanced error handling**: Better error messages and automatic fallback for transcripts
+- ✅ **Multi-language support**: Automatically tries different languages when fetching transcripts
+- ✅ **Improved reliability**: Fixed "sometimes not working" issues with YouTube API
+- ✅ **Better metadata**: Now shows actual video duration and channel information
 
 ## 🔮 Future Enhancements
 
