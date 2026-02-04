@@ -105,6 +105,31 @@
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
 
+        .btn-record {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-record:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+        }
+
+        .btn-record.recording {
+            background: #ff4444;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
         .btn-secondary {
             background: #6c757d;
             color: white;
@@ -281,7 +306,8 @@
         <div class="instructions">
             <h3>📝 How to Use:</h3>
             <ol>
-                <li>Enter keywords or phrases from the YouTube video you want to find</li>
+                <li><strong>Option 1 - Record Audio:</strong> Click "🎤 Record Audio" and play ~20 seconds of a YouTube video to identify it automatically</li>
+                <li><strong>Option 2 - Search by Keywords:</strong> Enter keywords or phrases from the video</li>
                 <li>Click "Search Videos" to find matching videos</li>
                 <li>Select a video from the results</li>
                 <li>Click "Get Transcript" to view the full transcription</li>
@@ -289,6 +315,23 @@
         </div>
 
         <div class="input-section">
+            <div class="input-group">
+                <label for="audioRecording">🎤 Record Audio from YouTube Video:</label>
+                <div class="button-group">
+                    <button class="btn-record" id="recordBtn" onclick="toggleRecording()">
+                        🎤 Start Recording (20s)
+                    </button>
+                    <span id="recordingTimer" style="display: none; font-weight: bold; color: #dc3545; margin-left: 10px;">
+                        Recording: <span id="timerCount">20</span>s
+                    </span>
+                </div>
+                <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                    Play a YouTube video in another tab and record for 20 seconds to identify it
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin: 15px 0; color: #999; font-weight: bold;">- OR -</div>
+
             <div class="input-group">
                 <label for="searchQuery">🔍 Search Query (e.g., song lyrics, video title, keywords):</label>
                 <input 
@@ -478,6 +521,11 @@
             hideStatus();
             selectedVideoId = null;
             currentVideos = [];
+            
+            // Stop recording if active
+            if (isRecording) {
+                stopRecording();
+            }
         }
 
         // Allow Enter key to search
@@ -486,6 +534,154 @@
                 searchVideos();
             }
         });
+
+        // Audio Recording Functionality
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordingTimer = null;
+        let recordingSeconds = 0;
+        const MAX_RECORDING_TIME = 20; // 20 seconds
+
+        async function toggleRecording() {
+            if (!isRecording) {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                // Request microphone permission
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    } 
+                });
+                
+                // Create media recorder
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    // Create audio blob
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    
+                    // Convert to base64
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                        const base64Audio = reader.result;
+                        await identifyFromAudio(base64Audio);
+                    };
+                    reader.readAsDataURL(audioBlob);
+                    
+                    // Stop all tracks
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                // Start recording
+                mediaRecorder.start();
+                isRecording = true;
+                recordingSeconds = 0;
+                
+                // Update UI
+                const recordBtn = document.getElementById('recordBtn');
+                recordBtn.textContent = '⏹️ Stop Recording';
+                recordBtn.classList.add('recording');
+                document.getElementById('recordingTimer').style.display = 'inline';
+                
+                showStatus('Recording audio... Play your YouTube video now!', 'info');
+                
+                // Start countdown timer
+                recordingTimer = setInterval(() => {
+                    recordingSeconds++;
+                    const remaining = MAX_RECORDING_TIME - recordingSeconds;
+                    document.getElementById('timerCount').textContent = remaining;
+                    
+                    if (recordingSeconds >= MAX_RECORDING_TIME) {
+                        stopRecording();
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                showStatus('Error: Could not access microphone. Please grant permission.', 'error');
+                isRecording = false;
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                // Clear timer
+                if (recordingTimer) {
+                    clearInterval(recordingTimer);
+                    recordingTimer = null;
+                }
+                
+                // Update UI
+                const recordBtn = document.getElementById('recordBtn');
+                recordBtn.textContent = '🎤 Start Recording (20s)';
+                recordBtn.classList.remove('recording');
+                document.getElementById('recordingTimer').style.display = 'none';
+                document.getElementById('timerCount').textContent = '20';
+                
+                showStatus('Processing recorded audio...', 'info');
+            }
+        }
+
+        async function identifyFromAudio(audioBase64) {
+            hideStatus();
+            showLoading();
+            
+            // Hide previous results
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('transcriptSection').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/identify-from-audio', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        audioData: audioBase64,
+                        // Include searchQuery as fallback in case audio recognition fails
+                        searchQuery: document.getElementById('searchQuery').value.trim()
+                    })
+                });
+
+                const data = await response.json();
+                hideLoading();
+
+                if (!response.ok) {
+                    showStatus(data.error || 'Failed to identify audio', 'error');
+                    return;
+                }
+
+                if (data.success && data.videos && data.videos.length > 0) {
+                    currentVideos = data.videos;
+                    displayVideoResults(data.videos);
+                    showStatus(`Found ${data.videos.length} matching videos!`, 'success');
+                } else {
+                    showStatus('No videos found. Try recording again or use search keywords.', 'error');
+                }
+            } catch (error) {
+                hideLoading();
+                showStatus('Error identifying audio: ' + error.message, 'error');
+                console.error('Error:', error);
+            }
+        }
     </script>
 </body>
 </html>
