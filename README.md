@@ -111,6 +111,18 @@ export PORT=8080
 python server.py
 ```
 
+### Using Your Own AudD.io API Key (Recommended for Production)
+
+The service uses a test API key by default (limited to 50 requests/day). For production use:
+
+1. Get your free API key from https://audd.io/
+2. Set it as an environment variable:
+
+```bash
+export AUDD_API_TOKEN=your_api_key_here
+python server.py
+```
+
 ### Auto-start on Boot (Optional)
 
 The setup script offers to create a systemd service. If you chose not to during setup, you can do it manually:

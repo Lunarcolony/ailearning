@@ -20,7 +20,6 @@ import yt_dlp
 import logging
 import json
 import requests
-from pydub import AudioSegment
 import uuid
 
 # Configure logging
@@ -76,7 +75,8 @@ def identify_from_audio():
                 # Clean up temp file
                 try:
                     os.remove(temp_audio_path)
-                except:
+                except OSError as e:
+                    logger.warning(f"Failed to clean up temp file {temp_audio_path}: {str(e)}")
                     pass
                 
                 if audd_result:
@@ -230,13 +230,15 @@ def recognize_audio_with_audd(audio_file_path):
     try:
         # Note: This uses AudD.io's API. For production, get your own API key from https://audd.io/
         # Free tier: 50 requests per day
+        # Set environment variable AUDD_API_TOKEN to use your own key
         api_url = "https://api.audd.io/"
+        api_token = os.environ.get('AUDD_API_TOKEN', 'test')  # Use env var or test token
         
         # Try to identify the audio
         with open(audio_file_path, 'rb') as audio_file:
             files = {'file': audio_file}
             data = {
-                'api_token': 'test',  # Using test token - get your own from https://audd.io/
+                'api_token': api_token,
                 'return': 'timecode,apple_music,spotify'
             }
             
