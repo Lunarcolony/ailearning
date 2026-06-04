@@ -1,11 +1,11 @@
-from app.workers.celery_app import celery_app
+from app.workers.celery_app import app
 
 
-@celery_app.task
+@app.task
 def ingest_openalex() -> dict[str, str]:
     return {"status": "queued", "source": "openalex"}
 
 
-@celery_app.task
+@app.task
 def refresh_recommendations() -> dict[str, str]:
     return {"status": "queued", "job": "recommendations"}

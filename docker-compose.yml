@@ -27,7 +27,7 @@ services:
       context: ./backend
     environment:
       APP_NAME: Research Discovery API
-      DATABASE_URL: ******db:5432/research
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://research:research@db:5432/research}
       REDIS_URL: redis://redis:6379/0
       OLLAMA_URL: http://ollama:11434
     depends_on:
@@ -40,10 +40,10 @@ services:
   worker:
     build:
       context: ./backend
-    command: celery -A app.workers.celery_app.celery_app worker --loglevel=INFO
+    command: celery -A app.workers.celery_app.app worker --loglevel=INFO
     environment:
       APP_NAME: Research Discovery API
-      DATABASE_URL: ******db:5432/research
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://research:research@db:5432/research}
       REDIS_URL: redis://redis:6379/0
       OLLAMA_URL: http://ollama:11434
     depends_on:

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -15,4 +15,4 @@ class EventPayload(BaseModel):
 
 @router.post("/events")
 def log_event(body: EventPayload) -> dict:
-    return {"status": "accepted", "event_type": body.event_type, "ts": datetime.utcnow().isoformat()}
+    return {"status": "accepted", "event_type": body.event_type, "ts": datetime.now(timezone.utc).isoformat()}

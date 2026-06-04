@@ -1,5 +1,5 @@
-from pydantic import BaseModel
 from fastapi import APIRouter, Query
+from pydantic import BaseModel
 
 from app.services.search import SearchResponse, keyword_search, semantic_search
 

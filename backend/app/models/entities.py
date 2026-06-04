@@ -1,15 +1,31 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    JSON,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
+EMBEDDING_DIMENSION = 768
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
 
 class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
 
 class User(TimestampMixin, Base):
@@ -66,7 +82,7 @@ class PaperSource(Base):
     source_name: Mapped[str] = mapped_column(String(64), index=True)
     source_record_id: Mapped[str] = mapped_column(String(128), index=True)
     raw_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class PaperLink(Base):
@@ -78,7 +94,7 @@ class PaperLink(Base):
     url: Mapped[str] = mapped_column(Text)
     is_best: Mapped[bool] = mapped_column(Boolean, default=False)
     license: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Author(Base):
@@ -161,9 +177,9 @@ class Embedding(Base):
     entity_type: Mapped[str] = mapped_column(String(64), index=True)
     entity_id: Mapped[int] = mapped_column(Integer, index=True)
     model_name: Mapped[str] = mapped_column(String(64), index=True)
-    vector: Mapped[list[float]] = mapped_column(Vector(768))
+    vector: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIMENSION))
     text_hash: Mapped[str] = mapped_column(String(128), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class UserEvent(Base):
@@ -175,16 +191,16 @@ class UserEvent(Base):
     paper_id: Mapped[int | None] = mapped_column(ForeignKey("papers.id"), nullable=True)
     topic_id: Mapped[int | None] = mapped_column(ForeignKey("topics.id"), nullable=True)
     payload_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    ts: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
 
 
 class UserProfile(Base):
     __tablename__ = "user_profiles"
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    interest_vector: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
+    interest_vector: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSION), nullable=True)
     exploration_score: Mapped[float] = mapped_column(Float, default=0.2)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
 
 class Recommendation(Base):
@@ -197,7 +213,7 @@ class Recommendation(Base):
     score: Mapped[float] = mapped_column(Float)
     reason_code: Mapped[str] = mapped_column(String(64), index=True)
     reason_text: Mapped[str] = mapped_column(Text)
-    served_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    served_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
 
 
 class Bookmark(Base):
@@ -207,7 +223,7 @@ class Bookmark(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     paper_id: Mapped[int] = mapped_column(ForeignKey("papers.id", ondelete="CASCADE"), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class Collection(Base):
@@ -218,7 +234,7 @@ class Collection(Base):
     name: Mapped[str] = mapped_column(String(255), index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class CollectionItem(Base):
@@ -226,7 +242,7 @@ class CollectionItem(Base):
 
     collection_id: Mapped[int] = mapped_column(ForeignKey("collections.id", ondelete="CASCADE"), primary_key=True)
     paper_id: Mapped[int] = mapped_column(ForeignKey("papers.id", ondelete="CASCADE"), primary_key=True)
-    added_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class Note(Base):
@@ -237,8 +253,8 @@ class Note(Base):
     paper_id: Mapped[int] = mapped_column(ForeignKey("papers.id", ondelete="CASCADE"), index=True)
     selection_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
     body: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
 
 class Tag(Base):
@@ -264,4 +280,4 @@ class SavedSearch(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(255), index=True)
     query_json: Mapped[dict] = mapped_column(JSON)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

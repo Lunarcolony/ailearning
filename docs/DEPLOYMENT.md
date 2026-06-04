@@ -15,3 +15,7 @@ docker compose up -d --build
 - 4 vCPU
 - 8-16 GB RAM
 - SSD storage
+
+## Production hardening
+- Replace all default local credentials (database, Grafana admin, OAuth secrets) before deployment.
+- Store secrets in environment variables or a secrets manager; do not commit them.

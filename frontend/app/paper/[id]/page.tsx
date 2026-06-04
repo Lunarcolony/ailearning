@@ -1,7 +1,8 @@
-export default function PaperPage({ params }: { params: { id: string } }) {
+export default async function PaperPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   return (
     <section className="space-y-3">
-      <h1 className="text-2xl font-bold">Paper {params.id}</h1>
+      <h1 className="text-2xl font-bold">Paper {id}</h1>
       <p className="text-zinc-400">Legal access status: Open access PDF available.</p>
       <ul className="list-disc pl-5 text-sm text-zinc-300">
         <li>Summary (1 minute)</li>
